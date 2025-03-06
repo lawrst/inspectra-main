@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 import cv2
 import os
-import datetime
+from datetime import datetime
 import logging
 from pymongo import MongoClient
 from bson.json_util import dumps
@@ -54,33 +54,43 @@ class Detection:
             results = self.model.predict(img, conf=conf)
         return results
 
+    
     def predict_and_detect(self, img, classes=[], conf=0.5, rectangle_thickness=2, text_thickness=1):
         results = self.predict(img, classes, conf=conf)
         for result in results:
             for box in result.boxes:
-                # Obtém a classe do objeto detectado
                 class_id = int(box.cls[0])
                 class_name = result.names[class_id]
 
                 # Define a cor do quadrado com base no status do objeto
-                if class_name == "Intacto":  # Substitua "intact" pelo nome da classe intacta no seu modelo
+                if class_name == "Intacto":
                     box_color = (0, 255, 0)  # Verde para objetos intactos
                 else:
                     box_color = (255, 0, 0)  # Vermelho para outros objetos
 
                 # Desenha o quadrado ao redor do objeto
                 cv2.rectangle(img, (int(box.xyxy[0][0]), int(box.xyxy[0][1])),
-                              (int(box.xyxy[0][2]), int(box.xyxy[0][3])), box_color, rectangle_thickness)
+                            (int(box.xyxy[0][2]), int(box.xyxy[0][3])), box_color, rectangle_thickness)
 
                 # Adiciona o nome da classe acima do quadrado
                 cv2.putText(img, f"{class_name}",
                             (int(box.xyxy[0][0]), int(box.xyxy[0][1]) - 10),
                             cv2.FONT_HERSHEY_PLAIN, 1, box_color, text_thickness)
-        return img, results
-
+        return img, results   
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     def detect_from_image(self, image):
-        result_img, _ = self.predict_and_detect(image, classes=[], conf=0.5)
-        return result_img
+        result_img, results = self.predict_and_detect(image, classes=[], conf=0.5)
+        return result_img, results
 
     def detect_from_video_frame(self, frame):
         result_img, _ = self.predict_and_detect(frame, classes=[], conf=0.5)
@@ -92,11 +102,12 @@ detection = Detection()
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('teste.html')
 
 
-@app.route('/object-detection', methods=['POST'])
+@app.route('/object-detection/', methods=['POST'])
 def apply_detection():
+    print("Requisição recebida em /object-detection")  # Log para depuração
     if 'image' not in request.files:
         return 'No file part', 400
 
@@ -106,56 +117,57 @@ def apply_detection():
         return 'No selected file', 400
 
     if file:
-        filename = secure_filename(file.filename)
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(file_path)
+        try:
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
 
-        img = Image.open(file_path).convert("RGB")
-        img = np.array(img)
-        img = cv2.resize(img, (512, 512))
-        img, results = detection.detect_from_image(img)
-        
-
-        intact_count = 0
-        damaged_count = 0
-        for result in results:
+            # Processar a imagem
+            img = Image.open(file_path).convert("RGB")
+            img = np.array(img)
+            img = cv2.resize(img, (512, 512))
+            img, results = detection.detect_from_image(img)
+            
+            # Contar objetos intactos e danificados
+            intact_count = 0
+            damaged_count = 0
+            for result in results:
                 for box in result.boxes:
                     class_id = int(box.cls[0])
                     class_name = result.names[class_id]
+                    confidence = float(box.conf[0])
                     if class_name == "Intacto":
                         intact_count += 1
                     elif class_name == "Danificado":
                         damaged_count += 1
-                
-        inspection_time = datetime.now()        
-        
-        dectection_data = {
-                    "filename": filename,
-                    "detected_object": class_name,
-                    "Confidence": float(box.conf[0]),
-                    "timestamp": inspection_time,
-                    "status": "intacto" if damaged_count == 0 else "defeito"
-                }
-        collection.insert_one(dectection_data)
-        
-        
-        output = Image.fromarray(img)
-        buf = io.BytesIO()
-        output.save(buf, format="PNG")
-        buf.seek(0)
 
-        os.remove(file_path)
-        return send_file(buf, mimetype='image/png')
+                    # Salvar cada objeto detectado no MongoDB
+                    detection_data = {
+                        "filename": filename,
+                        "detected_object": class_name,
+                        "confidence": confidence,
+                        "timestamp": datetime.now(),
+                        "status": "intacto" if class_name == "Intacto" else "defeito"
+                    }
+                    collection.insert_one(detection_data)
 
-        
-    try:
-        return ('Imagem processada e dados salvos com sucesso!', 200 )
-    except Exception as e:
-        print('Erro ao processar a imagem {}'.format(e))
-        if 'file_path' in locals() and os.path.exists(file_path):
+            # Converter a imagem processada para PNG
+            output = Image.fromarray(img)
+            buf = io.BytesIO()
+            output.save(buf, format="PNG")
+            buf.seek(0)
+
+            # Remover arquivo original
+            os.remove(file_path)
+
+            # Retornar a imagem processada
+            return send_file(buf, mimetype='image/png')
+
+        except Exception as e:
+            print(f"Erro ao processar a imagem: {str(e)}")
+            if 'file_path' in locals() and os.path.exists(file_path):
                 os.remove(file_path)
-        return f"Erro interno: {str(e)}", 500
-    
+            return f"Erro interno: {str(e)}", 500
     
 @app.route('/video')
 def index_video():
@@ -210,4 +222,4 @@ def get_inspection_data():
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=19000, debug=True)
+    app.run(host="0.0.0.0", port=17000, debug=True)
