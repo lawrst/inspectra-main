@@ -12,7 +12,7 @@ from pymongo import MongoClient
 from bson.json_util import dumps
 from flask_cors import CORS
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=r'C:\Users\Mariana\Documents\project\inspectra-main\Object-Detection-Yolo-Flask-main v3\templates')
 CORS(app)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 
@@ -102,8 +102,19 @@ detection = Detection()
 
 @app.route('/')
 def index():
-    return render_template('teste.html')
+    return render_template('index.html')
 
+@app.route('/cadastro')
+def cadastro():
+    return render_template('cadastro.html')
+
+@app.route('/monitoramento')
+def monitoramento():
+    return render_template('monitoramento.html')
+
+@app.route('/deteccao')
+def deteccao():
+    return render_template('deteccaoimg.html')
 
 @app.route('/object-detection/', methods=['POST'])
 def apply_detection():

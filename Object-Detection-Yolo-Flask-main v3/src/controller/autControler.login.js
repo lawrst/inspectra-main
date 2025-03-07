@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'; 
 import {loginService, generateToken} from "../services/aut.service.js"
 
 const login = async (req,res) => {

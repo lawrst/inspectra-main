@@ -1,3 +1,8 @@
+{% extends "base.html" %}
+
+{% block title %}Webcam Object Detection - INSPECTRA{% endblock %}
+
+{% block content %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -55,7 +60,7 @@
     </style>
 </head>
 <body>
-    <h1>Face Detection Application</h1>
+    <h1>Detecção de video</h1>
     <div id="video-container">
         <img id="video-feed" src="/video_feed" alt="Video Feed">
     </div>
@@ -80,3 +85,4 @@
     </script>
 </body>
 </html>
+{% endblock %}

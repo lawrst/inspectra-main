@@ -74,7 +74,7 @@
             <div class="col-md-6 split p-4">
                 <h1 class="mb-3">Bem-vindo ao Inspectra</h1>
                 <p>Gerencie sua produção de forma eficiente e organizada com nosso sistema.</p>
-                <a href="cadastro.html">Ainda não tem conta? Cadastre-se</a>
+                <a href="/cadastro">Ainda não tem conta? Cadastre-se</a>
             </div>
         </div>
     </div>
@@ -108,7 +108,7 @@
                 
                 if (response.ok) {
                     
-                    window.location.href = "monitoramento.html"; // Redireciona para login após cadastro
+                    window.location.href = "/monitoramento"; // Redireciona para login após cadastro
                 } else {
                     alert(result.error || 'Erro! Senha ou Usuario incorretos');
                 }

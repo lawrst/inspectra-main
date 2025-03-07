@@ -1,6 +1,6 @@
 // modelo de documentos
 import mongoose from "mongoose"
-import bcrypt from 'bcrypt'
+import bcrypt from "bcryptjs"
 
 // Verificação, 
 const UserSchema = new mongoose.Schema({

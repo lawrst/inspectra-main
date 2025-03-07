@@ -1,101 +1,81 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inspectra - Sistema de Monitoramento</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% extends "base.html" %}
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  
-</head>
+{% block title %}Monitoramento - INSPECTRA{% endblock %}
 
-<body>  
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Inspectra</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#historico">Histórico</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="deteccaoImg.html">Envio de Dados</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+{% block content %}
 
-    <!-- Inicio do container-->
-    <div class="container mt-4">
-        <!-- Dados Coletados -->
-        <div class="card mb-4" id="historico">
-            <div class="card-header bg-primary text-white">Dados Coletados</div>
-            <div class="card-body">
-                <table class="table table-striped" id="productTable">
-                    <thead>
-                        <tr>
-                            <th>ID do Produto</th>
-                            <th>Hora da Inspeção</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- As linhas serão preenchidas dinamicamente -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Grafico dos resultados -->
-        <div class="card mb-4">
-            <div class="card-header bg-info text-white">Resumo de Inspeções</div>
-            <div class="card-body text-center">
-                <canvas id="inspectionChart"></canvas>
-            </div>
-        </div>
-    
-
-
-
-        <!-- Envio de Dados -->
-        <div class="card mb-4" id="envio">
-            <div class="card-header bg-success text-white">Envio de Dados</div>
-            <div class="card-body">
-                <form id="upload-form" action="/object-detection/" method="post" enctype="multipart/form-data">
-                    <div class="mb-3">
-                        <label for="image" class="form-label">Selecione uma Imagem:</label>
-                        <input class="form-control" type="file" id="image" name="image" accept="image/*" required>
-                    </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">Enviar e Aplicar Detecção</button>
-                    </div>
-                </form>
-                <h5 class="text-center mt-3">Imagem Processada:</h5>
-                <img id="output-image" src="" alt="Imagem Processada" class="img-fluid mb-3 d-none">
-                <div class="d-grid">
-                    <a id="download-link" href="" download="output.png" class="btn btn-success d-none">Baixar Imagem</a>
-                </div>
-                <div id="message" class="alert mt-3 d-none"></div>
-            </div>
-
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">Inspectra</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="#historico">Histórico</a>
+                </li>
             
+            </ul>
         </div>
-        
-            <p  class="mb-0">Inspectra © 2025 - Todos os direitos reservados</p>
-        
     </div>
-    <!-- Fim do container-->
-   
+</nav>
 
+<div class="container mt-4">
+    <!-- Dados Coletados -->
+    <div class="card mb-4" id="historico">
+        <div class="card-header bg-primary text-white">Dados Coletados</div>
+        <div class="card-body">
+            <table class="table table-striped" id="productTable">
+                <thead>
+                    <tr>
+                        <th>ID do Produto</th>
+                        <th>Hora da Inspeção</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- As linhas serão preenchidas dinamicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
     
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Contagem-->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">Contagem</div>
+        <div class="card-body">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Intactos</th>
+                        <th>Defeituosos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ intact_count }}</td>
+                        <td>{{ damaged_count }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Gráfico de Resultados -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">Resumo de Inspeções</div>
+        <div class="card-body text-center">
+            <canvas id="inspectionChart"></canvas>
+        </div>
+    </div>
+    
+    <p class="mb-0 text-center">Inspectra © 2025 - Todos os direitos reservados</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
     <script>
@@ -186,7 +166,10 @@
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
 
 
 </html>
+
+{% endblock %}

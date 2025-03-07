@@ -1,14 +1,11 @@
-import mongoose from "mongoose"
+import mongoose from "mongoose";
 
-const productInfoSchema = new mongoose.Schema({
-    product_id: { type: String, required: true, unique: true },
-    name: { type: String, required: true },
-    description: { type: String },
-    weight: { type: Number },
-    movement: { type: Boolean },
-    status: {type: String, enum: ['intacto', 'defeito'], default: 'intacto'},
-    defects: [{type: String}],
-    timestamp: { type: Date, default: Date.now },
+const productSchema = new mongoose.Schema({
+    product_id: { type: String, required: true }, // ID do produto
+    timestamp: { type: Date, default: Date.now }, // Data e hora da inspeção
+    status: { type: String, enum: ["intacto", "defeito"], required: true }, // Status do produto
 });
 
-export default productInfoSchema
+const Product = mongoose.model("Product", productSchema);
+
+export default Product;
