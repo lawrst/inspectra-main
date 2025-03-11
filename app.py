@@ -13,6 +13,7 @@ from bson.json_util import dumps
 from flask_cors import CORS
 from bson import ObjectId
 import base64
+from flask import jsonify
 
 app = Flask(__name__, template_folder=r'C:\Users\Mariana\Documents\project\inspectra-main\Object-Detection-Yolo-Flask-main-v3\templates')
 
@@ -239,35 +240,54 @@ def video_feed():
 @app.route('/api-info', methods=['GET'])
 def get_inspection_data():
     try:
-        # Consultar os dados no MongoDB
-        inspections = list(collection.find({}))
-        logger.info(f"Dados encontrados: {len(inspections)} registros")
+        # Paginação
+        page = int(request.args.get('page', 1))  # Página atual
+        limit = int(request.args.get('limit', 20))  # Registros por página
+        skip = (page - 1) * limit  # Pular registros
 
-        # Formatar os dados para JSON
-        formatted_inspections = []
-        for inspection in inspections:
-            # Verifica se o campo 'product_id' existe e converte para string
-            product_id = inspection.get('product_id', 'N/A')  # Usa 'N/A' se não existir
-            if product_id != 'N/A':
-                product_id = str(product_id)  # Converte ObjectId para string
+        # Filtro por data
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
 
-            # Formata os dados
-            formatted_inspection = {
-                "_id": str(inspection['_id']),
-                "product_id": product_id,
-                "filename": inspection.get('filename', 'N/A'),
-                "detected_object": inspection.get('detected_object', 'N/A'),
-                "confidence": inspection.get('confidence', 0),
-                "timestamp": inspection.get('timestamp', datetime.now()).isoformat(),
-                "status": inspection.get('status', 'N/A')
+        query = {}
+
+        if start_date and end_date:
+            query["timestamp"] = {
+                "$gte": datetime.strptime(start_date, "%Y-%m-%d"),
+                "$lte": datetime.strptime(end_date, "%Y-%m-%d")
             }
-            formatted_inspections.append(formatted_inspection)
 
-        return dumps(formatted_inspections), 200
+        # Buscar dados filtrados
+        inspections = list(collection.find(query).sort("timestamp", -1).skip(skip).limit(limit))
+        total = collection.count_documents(query)
+
+        # Contagem de status
+        intact_count = collection.count_documents({**query, "status": "intacto"})
+        damaged_count = collection.count_documents({**query, "status": "defeito"})
+
+        # Formatar resposta JSON
+        formatted_inspections = [
+            {
+                "_id": str(inspection['_id']),
+                "product_id": inspection.get('product_id', 'N/A'),
+                "timestamp": inspection.get('timestamp', datetime.now()).isoformat(),
+                "status": inspection.get('status', 'N/A'),
+                "peso": inspection.get('peso', 'N/A')  # Adiciona o campo "peso"
+            }
+            for inspection in inspections
+        ]
+
+        return jsonify({
+            "data": formatted_inspections,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "intact_count": intact_count,
+            "damaged_count": damaged_count
+        }), 200
 
     except Exception as e:
-        logger.error(f"Erro ao buscar dados: {str(e)}")
-        return f"Erro ao buscar dados: {str(e)}", 500
+        return jsonify({"error": f"Erro ao buscar dados: {str(e)}"}), 500
 
 
 
