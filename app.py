@@ -11,12 +11,15 @@ import logging
 from pymongo import MongoClient
 from bson.json_util import dumps
 from flask_cors import CORS
+from bson import ObjectId
+import base64
 
-app = Flask(__name__, template_folder=r'C:\Users\Mariana\Documents\project\inspectra-main\Object-Detection-Yolo-Flask-main v3\templates')
+app = Flask(__name__, template_folder=r'C:\Users\Mariana\Documents\project\inspectra-main\Object-Detection-Yolo-Flask-main-v3\templates')
+
 CORS(app)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 
-# Configuração de logs 
+# Configuração de logs
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -34,8 +37,17 @@ except Exception as e:
 db = client ['formulario']
 collection = db['dados_inspeccao']
 
-
-
+def get_next_product_id():
+    try:
+        # Busca o último produto com o maior product_id
+        last_product = collection.find_one(sort=[("product_id", -1)])
+        if last_product and "product_id" in last_product:
+            return last_product["product_id"] + 1  # Incrementa +1
+        else:
+            return 1  # Começa do 1 se não houver registros
+    except Exception as e:
+        print(f"Erro ao gerar product_id: {str(e)}")
+        return 1  # Valor padrão em caso de erro
 
 # Certifique-se de que a pasta de uploads existe
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -54,7 +66,7 @@ class Detection:
             results = self.model.predict(img, conf=conf)
         return results
 
-    
+
     def predict_and_detect(self, img, classes=[], conf=0.5, rectangle_thickness=2, text_thickness=1):
         results = self.predict(img, classes, conf=conf)
         for result in results:
@@ -76,18 +88,18 @@ class Detection:
                 cv2.putText(img, f"{class_name}",
                             (int(box.xyxy[0][0]), int(box.xyxy[0][1]) - 10),
                             cv2.FONT_HERSHEY_PLAIN, 1, box_color, text_thickness)
-        return img, results   
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+        return img, results
+
+
+
+
+
+
+
+
+
+
+
     def detect_from_image(self, image):
         result_img, results = self.predict_and_detect(image, classes=[], conf=0.5)
         return result_img, results
@@ -116,14 +128,15 @@ def monitoramento():
 def deteccao():
     return render_template('deteccaoimg.html')
 
+
+
 @app.route('/object-detection/', methods=['POST'])
 def apply_detection():
-    print("Requisição recebida em /object-detection")  # Log para depuração
     if 'image' not in request.files:
         return 'No file part', 400
 
     file = request.files['image']
-    
+
     if file.filename == '':
         return 'No selected file', 400
 
@@ -138,7 +151,7 @@ def apply_detection():
             img = np.array(img)
             img = cv2.resize(img, (512, 512))
             img, results = detection.detect_from_image(img)
-            
+
             # Contar objetos intactos e danificados
             intact_count = 0
             damaged_count = 0
@@ -152,8 +165,12 @@ def apply_detection():
                     elif class_name == "Danificado":
                         damaged_count += 1
 
+                    # Gerar um ID numérico único
+                    product_id = get_next_product_id()
+
                     # Salvar cada objeto detectado no MongoDB
                     detection_data = {
+                        "product_id": product_id,  # ID numérico
                         "filename": filename,
                         "detected_object": class_name,
                         "confidence": confidence,
@@ -179,7 +196,7 @@ def apply_detection():
             if 'file_path' in locals() and os.path.exists(file_path):
                 os.remove(file_path)
             return f"Erro interno: {str(e)}", 500
-    
+
 @app.route('/video')
 def index_video():
     return render_template('video.html')
@@ -223,12 +240,34 @@ def video_feed():
 def get_inspection_data():
     try:
         # Consultar os dados no MongoDB
-        inspections = list(collection.find({}, {'_id': 0}))  # Exclui o campo _id do resultado
-        return dumps(inspections), 200  # Retorna os dados em formato JSON
-    
-    except Exception as e:
-        return f"Erro ao buscar dados: {str(e)}", 500
+        inspections = list(collection.find({}))
+        logger.info(f"Dados encontrados: {len(inspections)} registros")
 
+        # Formatar os dados para JSON
+        formatted_inspections = []
+        for inspection in inspections:
+            # Verifica se o campo 'product_id' existe e converte para string
+            product_id = inspection.get('product_id', 'N/A')  # Usa 'N/A' se não existir
+            if product_id != 'N/A':
+                product_id = str(product_id)  # Converte ObjectId para string
+
+            # Formata os dados
+            formatted_inspection = {
+                "_id": str(inspection['_id']),
+                "product_id": product_id,
+                "filename": inspection.get('filename', 'N/A'),
+                "detected_object": inspection.get('detected_object', 'N/A'),
+                "confidence": inspection.get('confidence', 0),
+                "timestamp": inspection.get('timestamp', datetime.now()).isoformat(),
+                "status": inspection.get('status', 'N/A')
+            }
+            formatted_inspections.append(formatted_inspection)
+
+        return dumps(formatted_inspections), 200
+
+    except Exception as e:
+        logger.error(f"Erro ao buscar dados: {str(e)}")
+        return f"Erro ao buscar dados: {str(e)}", 500
 
 
 
