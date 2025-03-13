@@ -131,6 +131,8 @@ def deteccao():
 
 
 
+
+
 @app.route('/object-detection/', methods=['POST'])
 def apply_detection():
     if 'image' not in request.files:
@@ -153,58 +155,60 @@ def apply_detection():
             img = cv2.resize(img, (512, 512))
             img, results = detection.detect_from_image(img)
 
-            # Contar objetos intactos e danificados
-            intact_count = 0
-            damaged_count = 0
+            # Criar cópia da imagem para salvar com as detecções
+            img_with_boxes = img.copy()
+
+            # Desenhar bounding boxes
             for result in results:
                 for box in result.boxes:
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
                     class_id = int(box.cls[0])
                     class_name = result.names[class_id]
                     confidence = float(box.conf[0])
-                    if class_name == "Intacto":
-                        intact_count += 1
-                    elif class_name == "Danificado":
-                        damaged_count += 1
 
-                    # Gerar um ID numérico único
-                    product_id = get_next_product_id()
+                    cv2.rectangle(img_with_boxes, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    cv2.putText(img_with_boxes, f"{class_name} {confidence:.2f}", 
+                                (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-                    # Salvar cada objeto detectado no MongoDB
-                    detection_data = {
-                        "product_id": product_id,  # ID numérico
-                        "filename": filename,
-                        "detected_object": class_name,
-                        "confidence": confidence,
-                        "timestamp": datetime.now(),
-                        "status": "intacto" if class_name == "Intacto" else "defeito"
-                    }
-                    collection.insert_one(detection_data)
+            # Converter imagem processada para salvar no banco
+            _, img_encoded = cv2.imencode('.png', img_with_boxes)
+            img_base64 = base64.b64encode(img_encoded.tobytes()).decode("utf-8")
 
-            # Converter a imagem processada para PNG
-            output = Image.fromarray(img)
-            buf = io.BytesIO()
-            output.save(buf, format="PNG")
-            buf.seek(0)
+            # Gerar o product_id
+            product_id = get_next_product_id()
+
+            # Salvar no banco de dados
+            image_data = {
+                "product_id": product_id,  # Adiciona o product_id
+                "filename": filename,
+                "processed_image": img_base64,
+                "detected_object": class_name,
+                "confidence": confidence,
+                "timestamp": datetime.utcnow(),
+                "status": "intacto" if class_name.lower() == "intacto" else "danificado"
+            }
+            collection.insert_one(image_data)
+
+            # Criar um arquivo para exibição na página
+            processed_path = os.path.join(app.config['UPLOAD_FOLDER'], f"processed_{filename}")
+            cv2.imwrite(processed_path, img_with_boxes)
 
             # Remover arquivo original
             os.remove(file_path)
 
-            # Retornar a imagem processada
-            return send_file(buf, mimetype='image/png')
+            return send_file(processed_path, mimetype='image/png')
 
         except Exception as e:
             print(f"Erro ao processar a imagem: {str(e)}")
-            if 'file_path' in locals() and os.path.exists(file_path):
-                os.remove(file_path)
             return f"Erro interno: {str(e)}", 500
-
+        
 @app.route('/video')
 def index_video():
     return render_template('video.html')
 
 
 def gen_frames():
-    cap = cv2.VideoCapture(0)  # Use 0 para a câmera padrão
+    cap = cv2.VideoCapture(1)  # Use 0 para a câmera padrão
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
@@ -289,7 +293,36 @@ def get_inspection_data():
     except Exception as e:
         return jsonify({"error": f"Erro ao buscar dados: {str(e)}"}), 500
 
+@app.route('/results')
+def show_results():
+    imagens = collection.find().sort("timestamp", -1)  # Ordenar pelos mais recentes
+    return render_template("results.html", imagens=imagens)
 
+    results = collection.find()
+
+    processed_results = []
+    for result in results:
+        # Formatar timestamp
+        if isinstance(result["timestamp"], datetime):
+            result["timestamp"] = result["timestamp"].strftime("%d/%m/%Y %H:%M:%S")
+
+        # Se a imagem processada foi salva como Base64, usar ela
+        if "image_base64" in result and result["image_base64"]:
+            image_url = f"data:image/png;base64,{result['image_base64']}"
+        else:
+            image_url = "/static/images/not-found.png"
+
+        result["image_url"] = image_url
+        processed_results.append(result)
+
+    return render_template("results.html", results=processed_results)
+
+
+# Rota para download da imagem
+@app.route("/download/<filename>")
+def download_image(filename):
+    image_path = f"static/images/{filename}"
+    return send_file(image_path, as_attachment=True)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=17000, debug=True)

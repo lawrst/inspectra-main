@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Resultados da Detecção - INSPECTRA{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Resultados da Detecção</h1>
+    <div class="row">
+        {% for imagem in imagens %}
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <!-- Verificar se a imagem processada é Base64 ou uma URL de um arquivo salvo -->
+                {% if imagem.processed_image %}
+                    <img src="data:image/png;base64,{{ imagem.processed_image }}" class="card-img-top" alt="Imagem Processada">
+                {% elif imagem.video_processed_image %}
+                    <img src="data:image/png;base64,{{ imagem.video_processed_image }}" class="card-img-top" alt="Imagem Processada de Vídeo">
+                {% else %}
+                    <img src="/static/images/not-found.png" class="card-img-top" alt="Imagem não encontrada">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">Objeto: {{ imagem.detected_object }}</h5>
+                    <p class="card-text">Confiança: {{ imagem.confidence | round(2) }}</p>
+                    <p class="card-text">Status: <strong>{{ imagem.status }}</strong></p>
+                    <p class="card-text"><small class="text-muted">Detectado em {{ imagem.timestamp.strftime('%d/%m/%Y %H:%M') }}</small></p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

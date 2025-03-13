@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Monitoramento - INSPECTRA{% endblock %}
+
+{% block content %}
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">Inspectra</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="#historico">Histórico</a>
+                </li>
+            
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <!-- Filtro por data -->
+    <div class="mb-3">
+        <label for="startDate">De:</label>
+        <input type="date" id="startDate">
+        <label for="endDate">Até:</label>
+        <input type="date" id="endDate">
+        <button onclick="fetchProductData(1)">Filtrar</button>
+    </div>
+    
+    <!-- Dados Coletados -->
+    <div class="card mb-4" id="historico">
+        <div class="card-header bg-primary text-white">Dados Coletados</div>
+        <div class="card-body">
+            <table class="table table-striped" id="productTable">
+                <thead>
+                    <tr>
+                        <th>ID do Produto</th>
+                        <th>Hora da Inspeção</th>
+                        <th>Peso</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- As linhas serão preenchidas dinamicamente -->
+                </tbody>
+            </table>
+
+            <div class="pagination">
+                <button id="prevPage" onclick="changePage(-1)">Anterior</button>
+                <span id="pageNumber">Página 1</span>
+                <button id="nextPage" onclick="changePage(1)">Próxima</button>
+            </div>
+        </div>
+    </div>
+    
+    
+
+    <!-- Contagem -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">Contagem</div>
+        <div class="card-body">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Intactos</th>
+                        <th>Defeituosos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td id="intactCount">0</td>
+                        <td id="damagedCount">0</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Gráfico de Resultados -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">Resumo de Inspeções</div>
+        <div class="card-body text-center">
+            <canvas id="inspectionChart"></canvas>
+        </div>
+    </div>
+
+    <p class="mb-0 text-center">Inspectra © 2025 - Todos os direitos reservados</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+    <script>
+        const options = { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+        };
+
+        let inspectionChart = null; // Variável global para armazenar o gráfico
+
+        // Função para buscar os dados da API
+        async function fetchProductData() {
+            try {
+                const response = await fetch('/api-info'); // Rota da API
+                const products = await response.json();
+
+                // Atualiza a tabela
+                const tableBody = document.querySelector('#productTable tbody');
+                tableBody.innerHTML = ''; // Limpa a tabela
+
+                products.forEach(product => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${product.product_id}</td>
+                        <td>${new Date(product.timestamp).toLocaleString()}</td>
+                        <td class="${product.status === 'intacto' ? 'text-success' : 'text-danger'}">
+                            ${product.status === 'intacto' ? 'Aprovado' : 'Reprovado'}
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+                // Atualiza o gráfico
+                updateChart(products);
+            } catch (error) {
+                console.error('Erro ao buscar dados:', error);
+            }
+        }
+        let currentPage = 1;
+        const limit = 20;
+
+        async function fetchProductData(page = 1) {
+            const startDate = document.getElementById("startDate").value;
+            const endDate = document.getElementById("endDate").value;
+
+            let url = `/api-info?page=${page}&limit=${limit}`;
+
+            if (startDate && endDate) {
+                url += `&start_date=${startDate}&end_date=${endDate}`;
+            }
+
+            try {
+                const response = await fetch(url);
+                const result = await response.json();
+
+                const tableBody = document.querySelector('#productTable tbody');
+                tableBody.innerHTML = '';
+
+                result.data.forEach(product => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${product.product_id}</td>
+                        <td>${new Date(product.timestamp).toLocaleString()}</td>
+                        <td>${product.peso !== undefined ? product.peso + 'g' : 'N/A'}</td>
+                        <td class="${product.status === 'intacto' ? 'text-success' : 'text-danger'}">
+                            ${product.status === 'intacto' ? 'Aprovado' : 'Reprovado'}
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+                // Atualiza contagem na interface
+                document.getElementById("intactCount").textContent = result.intact_count;
+                document.getElementById("damagedCount").textContent = result.damaged_count;
+
+                // Atualiza gráfico
+                updateChart(result.intact_count, result.damaged_count);
+
+                // Atualiza paginação
+                currentPage = result.page;
+                document.getElementById("pageNumber").textContent = `Página ${currentPage}`;
+                document.getElementById("prevPage").disabled = currentPage === 1;
+                document.getElementById("nextPage").disabled = result.data.length < limit;
+
+            } catch (error) {
+                console.error('Erro ao buscar dados:', error);
+            }
+        }
+
+        function changePage(delta) {
+            fetchProductData(currentPage + delta);
+        }
+
+        // Atualizar gráfico
+        
+        function updateChart(approved, rejected) {
+            const ctx = document.getElementById('inspectionChart').getContext('2d');
+
+            if (inspectionChart) {
+                inspectionChart.data.datasets[0].data = [approved, rejected];
+                inspectionChart.update();
+            } else {
+                inspectionChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Aprovados', 'Reprovados'],
+                        datasets: [{
+                            label: 'Quantidade',
+                            data: [approved, rejected],
+                            backgroundColor: ['#2E7D32', '#D32F2F'],
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: true },
+                            title: { display: true, text: 'Resultados das Inspeções' }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Carregar dados ao iniciar
+        document.addEventListener('DOMContentLoaded', () => fetchProductData(1));
+        
+    </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+
+
+</html>
+
+{% endblock %}
