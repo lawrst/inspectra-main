@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -148,6 +147,21 @@
                 font-size: 0.8em;
             }
         }
+
+        /* Estilo para notificações de detecção */
+        #detection-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #3498db;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
     </style>
 </head>
 <body>
@@ -166,6 +180,9 @@
         const toggleCameraButton = document.getElementById('toggle-camera');
         const videoFeed = document.getElementById('video-feed');
         let isCameraActive = true;
+        let isProcessing = false;
+        let lastDetectionTime = 0;
+        const DETECTION_COOLDOWN = 2000; // 2 segundos entre detecções para evitar duplicatas
 
         toggleCameraButton.addEventListener('click', () => {
             if (isCameraActive) {
@@ -181,14 +198,19 @@
         // Função para enviar dados de detecção para o backend
         async function sendDetectionData(data) {
             try {
-                const response = await fetch('/save-detection', {
+                const response = await fetch('/save-video-detection', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(data),
                 });
-                if (!response.ok) {
+                
+                if (response.ok) {
+                    console.log('Detecção salva com sucesso!');
+                    // Exibe uma notificação temporária
+                    showNotification('Objeto detectado e salvo!');
+                } else {
                     console.error('Erro ao salvar dados de detecção');
                 }
             } catch (error) {
@@ -196,36 +218,117 @@
             }
         }
 
-        // Função para processar o feed de vídeo e realizar a detecção
-        function processVideoFeed() {
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-
-            // Captura o frame atual do vídeo
-            context.drawImage(videoFeed, 0, 0, videoFeed.videoWidth, videoFeed.videoHeight);
-            const imageData = context.getImageData(0, 0, videoFeed.videoWidth, videoFeed.videoHeight);
-
-            // Aqui você pode adicionar a lógica de detecção (usando um modelo de ML, por exemplo)
-            // Exemplo: detectar objetos e classificar como intacto ou danificado
-            const detectionResults = [
-                { object: 'Produto A', status: 'intacto', confidence: 0.95 },
-                { object: 'Produto B', status: 'danificado', confidence: 0.87 },
-            ];
-
-            // Exibe os resultados no console (ou na interface, se necessário)
-            console.log('Resultados da detecção:', detectionResults);
-
-            // Envia os dados de detecção para o backend
-            sendDetectionData(detectionResults);
-
-            // Repete o processo a cada frame
-            requestAnimationFrame(processVideoFeed);
+        // Função para mostrar uma notificação temporária
+        function showNotification(message) {
+            // Verifica se já existe uma notificação
+            let notification = document.getElementById('detection-notification');
+            
+            if (!notification) {
+                // Cria um elemento de notificação
+                notification = document.createElement('div');
+                notification.id = 'detection-notification';
+                notification.style.position = 'fixed';
+                notification.style.bottom = '20px';
+                notification.style.right = '20px';
+                notification.style.backgroundColor = '#3498db';
+                notification.style.color = 'white';
+                notification.style.padding = '15px 20px';
+                notification.style.borderRadius = '5px';
+                notification.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                notification.style.zIndex = '1000';
+                notification.style.transition = 'opacity 0.5s ease';
+                document.body.appendChild(notification);
+            }
+            
+            // Atualiza a mensagem
+            notification.textContent = message;
+            notification.style.opacity = '1';
+            
+            // Remove a notificação após 3 segundos
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 500);
+            }, 3000);
         }
 
-        // Inicia o processamento do feed de vídeo
-        videoFeed.onplay = () => {
-            processVideoFeed();
-        };
+        // Função para capturar o frame atual e enviar para processamento
+        function captureFrame() {
+            // Verifica se já está processando ou se passou pouco tempo desde a última detecção
+            const currentTime = Date.now();
+            if (isProcessing || (currentTime - lastDetectionTime < DETECTION_COOLDOWN)) {
+                requestAnimationFrame(captureFrame);
+                return;
+            }
+
+            isProcessing = true;
+
+            // Cria um canvas para capturar o frame
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            // Define o tamanho do canvas para corresponder à imagem do feed
+            canvas.width = videoFeed.naturalWidth || 640;
+            canvas.height = videoFeed.naturalHeight || 480;
+            
+            // Desenha o frame atual no canvas
+            context.drawImage(videoFeed, 0, 0, canvas.width, canvas.height);
+            
+            // Converte o canvas para base64
+            const imageData = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // Envia o frame para o servidor para detecção
+            fetch('/process-video-frame', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    image: imageData,
+                    timestamp: new Date().toISOString()
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Se objetos foram detectados
+                if (data.detected && data.objects && data.objects.length > 0) {
+                    console.log('Objetos detectados:', data.objects);
+                    
+                    // Salva a detecção no banco de dados
+                    sendDetectionData({
+                        product_id: `PROD-${Date.now()}`, // Gera um ID único
+                        image_url: data.processed_image, // Imagem processada
+                        detected_objects: data.objects,
+                        status: data.status || 'intacto', // Status padrão ou do servidor
+                        confidence: data.confidence || 0.95,
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    // Atualiza o tempo da última detecção
+                    lastDetectionTime = Date.now();
+                }
+                
+                isProcessing = false;
+                requestAnimationFrame(captureFrame);
+            })
+            .catch(error => {
+                console.error('Erro ao processar frame:', error);
+                isProcessing = false;
+                requestAnimationFrame(captureFrame);
+            });
+        }
+
+        // Inicia o processamento do feed de vídeo quando a página carrega
+        document.addEventListener('DOMContentLoaded', () => {
+            // Pequeno atraso para garantir que o feed de vídeo esteja carregado
+            setTimeout(() => {
+                captureFrame();
+            }, 1000);
+        });
     </script>
 </body>
 </html>
+

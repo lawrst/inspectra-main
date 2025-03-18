@@ -43,6 +43,7 @@
                         <th>Hora da Inspeção</th>
                         <th>Peso</th>
                         <th>Status</th>
+                        <th>Imagem</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -97,92 +98,94 @@
 
     <script>
         const options = { 
-        day: '2-digit', 
-        month: '2-digit', 
-        year: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit' 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit' 
         };
 
         let inspectionChart = null; // Variável global para armazenar o gráfico
+        let currentPage = 1;
+        const limit = 20;
 
         // Função para buscar os dados da API
-        async function fetchProductData() {
+        async function fetchProductData(page = 1) {
             try {
-                const response = await fetch('/api-info'); // Rota da API
-                const products = await response.json();
+                const startDate = document.getElementById("startDate").value;
+                const endDate = document.getElementById("endDate").value;
+
+                // Constrói a URL com os parâmetros
+                let url = `/api-info?page=${page}&limit=${limit}`;
+                if (startDate && endDate) {
+                    url += `&start_date=${startDate}&end_date=${endDate}`;
+                }
+
+                console.log("Fetching data from:", url);
+                
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log("Data received:", result);
 
                 // Atualiza a tabela
                 const tableBody = document.querySelector('#productTable tbody');
                 tableBody.innerHTML = ''; // Limpa a tabela
 
-                products.forEach(product => {
+                if (result.data && result.data.length > 0) {
+                    // Processa cada produto
+                    for (const product of result.data) {
+                        try {
+                            // Busca a imagem associada ao produto
+                            const imageUrl = await fetchProductImage(product.product_id);
+                            
+                            const row = document.createElement('tr');
+                            const statusClass = product.status === 'intacto' ? 'text-success' : 'text-danger';
+                            const statusText = product.status === 'intacto' ? 'Aprovado' : 'Reprovado';
+                            
+                            row.innerHTML = `
+                                <td>${product.product_id}</td>
+                                <td>${new Date(product.timestamp).toLocaleString()}</td>
+                                <td>${product.peso !== undefined && product.peso !== 'N/A' ? product.peso + 'g' : 'N/A'}</td>
+                                <td class="${statusClass}">
+                                    ${statusText}
+                                </td>
+                                <td>
+                                    ${imageUrl ? `<img src="${imageUrl}" alt="Imagem do produto" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;" onclick="showFullImage('${imageUrl}')">` : 'N/A'}
+                                </td>
+                            `;
+                            tableBody.appendChild(row);
+                        } catch (err) {
+                            console.error("Error processing product:", product, err);
+                        }
+                    }
+                } else {
+                    // Se não houver dados, exibe uma mensagem
                     const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${product.product_id}</td>
-                        <td>${new Date(product.timestamp).toLocaleString()}</td>
-                        <td class="${product.status === 'intacto' ? 'text-success' : 'text-danger'}">
-                            ${product.status === 'intacto' ? 'Aprovado' : 'Reprovado'}
-                        </td>
-                    `;
+                    row.innerHTML = `<td colspan="5" class="text-center">Nenhum dado encontrado</td>`;
                     tableBody.appendChild(row);
-                });
-
-                // Atualiza o gráfico
-                updateChart(products);
-            } catch (error) {
-                console.error('Erro ao buscar dados:', error);
-            }
-        }
-        let currentPage = 1;
-        const limit = 20;
-
-        async function fetchProductData(page = 1) {
-            const startDate = document.getElementById("startDate").value;
-            const endDate = document.getElementById("endDate").value;
-
-            let url = `/api-info?page=${page}&limit=${limit}`;
-
-            if (startDate && endDate) {
-                url += `&start_date=${startDate}&end_date=${endDate}`;
-            }
-
-            try {
-                const response = await fetch(url);
-                const result = await response.json();
-
-                const tableBody = document.querySelector('#productTable tbody');
-                tableBody.innerHTML = '';
-
-                result.data.forEach(product => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${product.product_id}</td>
-                        <td>${new Date(product.timestamp).toLocaleString()}</td>
-                        <td>${product.peso !== undefined ? product.peso + 'g' : 'N/A'}</td>
-                        <td class="${product.status === 'intacto' ? 'text-success' : 'text-danger'}">
-                            ${product.status === 'intacto' ? 'Aprovado' : 'Reprovado'}
-                        </td>
-                    `;
-                    tableBody.appendChild(row);
-                });
+                }
 
                 // Atualiza contagem na interface
-                document.getElementById("intactCount").textContent = result.intact_count;
-                document.getElementById("damagedCount").textContent = result.damaged_count;
+                document.getElementById("intactCount").textContent = result.intact_count || 0;
+                document.getElementById("damagedCount").textContent = result.damaged_count || 0;
 
                 // Atualiza gráfico
-                updateChart(result.intact_count, result.damaged_count);
+                updateChart(result.intact_count || 0, result.damaged_count || 0);
 
                 // Atualiza paginação
-                currentPage = result.page;
+                currentPage = result.page || 1;
                 document.getElementById("pageNumber").textContent = `Página ${currentPage}`;
                 document.getElementById("prevPage").disabled = currentPage === 1;
-                document.getElementById("nextPage").disabled = result.data.length < limit;
+                document.getElementById("nextPage").disabled = !result.data || result.data.length < limit;
 
             } catch (error) {
                 console.error('Erro ao buscar dados:', error);
+                alert('Erro ao carregar dados. Verifique o console para mais detalhes.');
             }
         }
 
@@ -191,7 +194,6 @@
         }
 
         // Atualizar gráfico
-        
         function updateChart(approved, rejected) {
             const ctx = document.getElementById('inspectionChart').getContext('2d');
 
@@ -219,23 +221,61 @@
                 });
             }
         }
+        
+        // Função para buscar a imagem de um produto
+        async function fetchProductImage(productId) {
+            try {
+                console.log("Fetching image for product:", productId);
+                const response = await fetch(`/api-image/up-image/${productId}`);
+                if (!response.ok) {
+                    console.warn(`No image found for product ${productId}`);
+                    return null;
+                }
+                
+                const images = await response.json();
+                console.log("Images received:", images);
+                
+                if (images && images.length > 0) {
+                    return images[0].image_url;
+                }
+                return null;
+            } catch (error) {
+                console.error('Erro ao buscar imagem:', error);
+                return null;
+            }
+        }
+
+        // Função para mostrar imagem em tamanho completo
+        function showFullImage(imageUrl) {
+            const modal = document.createElement('div');
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.width = '100%';
+            modal.style.height = '100%';
+            modal.style.backgroundColor = 'rgba(0,0,0,0.8)';
+            modal.style.display = 'flex';
+            modal.style.justifyContent = 'center';
+            modal.style.alignItems = 'center';
+            modal.style.zIndex = '1050';
+            modal.onclick = () => document.body.removeChild(modal);
+            
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.style.maxWidth = '90%';
+            img.style.maxHeight = '90%';
+            img.style.objectFit = 'contain';
+            
+            modal.appendChild(img);
+            document.body.appendChild(modal);
+        }
 
         // Carregar dados ao iniciar
-        document.addEventListener('DOMContentLoaded', () => fetchProductData(1));
-        
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("Page loaded, fetching initial data...");
+            fetchProductData(1);
+        });
     </script>
-
-
-
-
-
-
-
-
-
-
-
-
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -245,3 +285,4 @@
 </html>
 
 {% endblock %}
+
