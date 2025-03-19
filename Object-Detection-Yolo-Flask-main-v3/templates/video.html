@@ -183,6 +183,9 @@
         let isProcessing = false;
         let lastDetectionTime = 0;
         const DETECTION_COOLDOWN = 2000; // 2 segundos entre detecções para evitar duplicatas
+        let detectionState = null; // Current detection state (intacto or defeito)
+        let detectionStartTime = 0; // When the current detection state started
+        let detectionSaved = false; // Flag to prevent saving the same detection multiple times
 
         toggleCameraButton.addEventListener('click', () => {
             if (isCameraActive) {
@@ -297,18 +300,41 @@
                 if (data.detected && data.objects && data.objects.length > 0) {
                     console.log('Objetos detectados:', data.objects);
                     
-                    // Salva a detecção no banco de dados
-                    sendDetectionData({
-                        product_id: `PROD-${Date.now()}`, // Gera um ID único
-                        image_url: data.processed_image, // Imagem processada
-                        detected_objects: data.objects,
-                        status: data.status || 'intacto', // Status padrão ou do servidor
-                        confidence: data.confidence || 0.95,
-                        timestamp: new Date().toISOString()
-                    });
+                    const currentStatus = data.status || 'intacto';
+                    
+                    // Verifica se o estado de detecção mudou
+                    if (detectionState !== currentStatus) {
+                        // Estado mudou, reinicia o contador
+                        detectionState = currentStatus;
+                        detectionStartTime = Date.now();
+                        detectionSaved = false;
+                    } else if (!detectionSaved && (Date.now() - detectionStartTime > 5000)) {
+                        // Mesmo estado por mais de 5 segundos e ainda não foi salvo
+                        console.log(`Detecção consistente de "${currentStatus}" por mais de 5 segundos`);
+                        
+                        // Salva a detecção no banco de dados com a imagem processada que contém as caixas de detecção
+                        sendDetectionData({
+                            product_id: `PROD-${Date.now()}`, // Gera um ID único
+                            image_url: data.processed_image, // Imagem processada com as caixas de detecção
+                            detected_objects: data.objects,
+                            status: currentStatus,
+                            confidence: data.confidence || 0.95,
+                            timestamp: new Date().toISOString(),
+                            save_with_boxes: true // Indica que queremos salvar com as caixas de detecção
+                        });
+                        
+                        // Marca como salvo para não salvar novamente o mesmo estado
+                        detectionSaved = true;
+                        showNotification(`Detecção de "${currentStatus}" salva após 5 segundos!`);
+                    }
                     
                     // Atualiza o tempo da última detecção
                     lastDetectionTime = Date.now();
+                } else {
+                    // Nenhum objeto detectado, reinicia o estado
+                    detectionState = null;
+                    detectionStartTime = 0;
+                    detectionSaved = false;
                 }
                 
                 isProcessing = false;

@@ -14,6 +14,10 @@
                     <img src="data:image/jpeg;base64,{{ imagem.processed_image }}" class="card-img-top" alt="Imagem Processada">
                 {% elif imagem.video_processed_image %}
                     <img src="data:image/jpeg;base64,{{ imagem.video_processed_image }}" class="card-img-top" alt="Imagem Processada de Vídeo">
+                {% elif imagem.image_url and imagem.image_url.startswith('data:') %}
+                    <img src="{{ imagem.image_url }}" class="card-img-top" alt="Imagem Processada">
+                {% elif imagem.image_url %}
+                    <img src="{{ imagem.image_url }}" class="card-img-top" alt="Imagem Processada">
                 {% else %}
                     <img src="/static/images/not-found.png" class="card-img-top" alt="Imagem não encontrada">
                 {% endif %}
