@@ -2,41 +2,345 @@
 
 {% block title %}Resultados da Detecção - INSPECTRA{% endblock %}
 
+{% block extra_css %}
+<style>
+    .results-header {
+        margin-bottom: 2rem;
+    }
+    
+    .results-title {
+        color: var(--primary-blue);
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        margin-bottom: 1rem;
+    }
+    
+    .results-subtitle {
+        color: var(--text-dark);
+        font-weight: 400;
+        opacity: 0.7;
+        max-width: 600px;
+    }
+    
+    .results-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .result-card {
+        background-color: white;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        transition: var(--transition);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .result-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .result-image-container {
+        position: relative;
+        padding-top: 75%; /* 4:3 Aspect Ratio */
+        overflow: hidden;
+        background-color: #f5f5f7;
+    }
+    
+    .result-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+    
+    .result-card:hover .result-image {
+        transform: scale(1.05);
+    }
+    
+    .result-overlay {
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: rgba(0, 113, 227, 0.8);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0 0 0 var(--radius-sm);
+        font-weight: 600;
+        font-size: 0.85rem;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+    }
+    
+    .result-overlay.intact {
+        background: rgba(46, 125, 50, 0.8);
+    }
+    
+    .result-overlay.damaged {
+        background: rgba(211, 47, 47, 0.8);
+    }
+    
+    .result-content {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+    }
+    
+    .result-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-dark);
+    }
+    
+    .result-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        flex-grow: 1;
+    }
+    
+    .result-info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .result-info-label {
+        font-weight: 500;
+        color: var(--text-dark);
+        opacity: 0.7;
+    }
+    
+    .result-info-value {
+        font-weight: 500;
+    }
+    
+    .result-info-value.intact {
+        color: #2E7D32;
+    }
+    
+    .result-info-value.damaged {
+        color: #D32F2F;
+    }
+    
+    .result-timestamp {
+        font-size: 0.85rem;
+        color: var(--text-dark);
+        opacity: 0.6;
+        margin-top: auto;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .empty-results {
+        text-align: center;
+        padding: 3rem;
+        background-color: white;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .empty-results-icon {
+        font-size: 3rem;
+        color: var(--primary-blue);
+        opacity: 0.3;
+        margin-bottom: 1rem;
+    }
+    
+    .empty-results-text {
+        font-size: 1.2rem;
+        font-weight: 500;
+        color: var(--text-dark);
+        opacity: 0.7;
+    }
+    
+    /* Modal para imagem em tamanho completo */
+    .image-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1050;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    
+    .image-modal.show {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .modal-image {
+        max-width: 90%;
+        max-height: 90%;
+        object-fit: contain;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-lg);
+        transform: scale(0.9);
+        transition: transform 0.3s ease;
+    }
+    
+    .image-modal.show .modal-image {
+        transform: scale(1);
+    }
+    
+    .close-modal {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background-color: white;
+        color: var(--text-dark);
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    .close-modal:hover {
+        background-color: var(--primary-blue);
+        color: white;
+        transform: rotate(90deg);
+    }
+    
+    @media (max-width: 768px) {
+        .results-grid {
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
-    <h1 class="text-center mb-4">Resultados da Detecção</h1>
-    <div class="row">
+<div class="container-fluid">
+    <div class="results-header">
+        <h1 class="results-title">Resultados da Detecção</h1>
+        <p class="results-subtitle">Visualize os resultados das detecções realizadas pelo sistema INSPECTRA.</p>
+    </div>
+    
+    {% if imagens and imagens|length > 0 %}
+    <div class="results-grid">
         {% for imagem in imagens %}
-        <div class="col-md-4 mb-4">
-            <div class="card">
+        <div class="result-card">
+            <div class="result-image-container" onclick="showFullImage('{% if imagem.processed_image %}data:image/jpeg;base64,{{ imagem.processed_image }}{% elif imagem.video_processed_image %}data:image/jpeg;base64,{{ imagem.video_processed_image }}{% elif imagem.image_url and imagem.image_url.startswith("data:") %}{{ imagem.image_url }}{% elif imagem.image_url %}{{ imagem.image_url }}{% else %}/static/images/not-found.png{% endif %}')">
                 <!-- Verificar se a imagem processada é Base64 ou uma URL de um arquivo salvo -->
                 {% if imagem.processed_image %}
-                    <img src="data:image/jpeg;base64,{{ imagem.processed_image }}" class="card-img-top" alt="Imagem Processada">
+                    <img src="data:image/jpeg;base64,{{ imagem.processed_image }}" class="result-image" alt="Imagem Processada">
                 {% elif imagem.video_processed_image %}
-                    <img src="data:image/jpeg;base64,{{ imagem.video_processed_image }}" class="card-img-top" alt="Imagem Processada de Vídeo">
+                    <img src="data:image/jpeg;base64,{{ imagem.video_processed_image }}" class="result-image" alt="Imagem Processada de Vídeo">
                 {% elif imagem.image_url and imagem.image_url.startswith('data:') %}
-                    <img src="{{ imagem.image_url }}" class="card-img-top" alt="Imagem Processada">
+                    <img src="{{ imagem.image_url }}" class="result-image" alt="Imagem Processada">
                 {% elif imagem.image_url %}
-                    <img src="{{ imagem.image_url }}" class="card-img-top" alt="Imagem Processada">
+                    <img src="{{ imagem.image_url }}" class="result-image" alt="Imagem Processada">
                 {% else %}
-                    <img src="/static/images/not-found.png" class="card-img-top" alt="Imagem não encontrada">
+                    <img src="/static/images/not-found.png" class="result-image" alt="Imagem não encontrada">
                 {% endif %}
-                <div class="card-body">
-                    <h5 class="card-title">Objeto: {{ imagem.detected_object }}</h5>
-                    <p class="card-text">Confiança: {{ imagem.confidence | round(2) }}</p>
-                    <p class="card-text">Status: 
-                        {% if imagem.status == 'intacto' %}
-                            <strong class="text-success">{{ imagem.status }}</strong>
-                        {% else %}
-                            <strong class="text-danger">{{ imagem.status }}</strong>
-                        {% endif %}
-                    </p>
-                    <p class="card-text"><small class="text-muted">Detectado em {{ imagem.timestamp.strftime('%d/%m/%Y %H:%M') }}</small></p>
+                
+                <div class="result-overlay {% if imagem.status == 'intacto' %}intact{% else %}damaged{% endif %}">
+                    {% if imagem.status == 'intacto' %}
+                        <i class="bi bi-check-circle me-1"></i> Intacto
+                    {% else %}
+                        <i class="bi bi-exclamation-triangle me-1"></i> Defeito
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="result-content">
+                <h3 class="result-title">{{ imagem.detected_object }}</h3>
+                
+                <div class="result-info">
+                    <div class="result-info-item">
+                        <span class="result-info-label">Confiança:</span>
+                        <span class="result-info-value">{{ imagem.confidence | round(2) }}</span>
+                    </div>
+                    
+                    <div class="result-info-item">
+                        <span class="result-info-label">Status:</span>
+                        <span class="result-info-value {% if imagem.status == 'intacto' %}intact{% else %}damaged{% endif %}">
+                            {{ imagem.status }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="result-timestamp">
+                    <i class="bi bi-clock me-1"></i> Detectado em {{ imagem.timestamp.strftime('%d/%m/%Y %H:%M') }} (GMT-3)
                 </div>
             </div>
         </div>
         {% endfor %}
     </div>
+    {% else %}
+    <div class="empty-results">
+        <div class="empty-results-icon">
+            <i class="bi bi-image"></i>
+        </div>
+        <p class="empty-results-text">Nenhum resultado de detecção encontrado.</p>
+    </div>
+    {% endif %}
+    
+    <!-- Modal para imagem em tamanho completo -->
+    <div id="imageModal" class="image-modal">
+        <button id="closeModal" class="close-modal">
+            <i class="bi bi-x"></i>
+        </button>
+        <img id="modalImage" class="modal-image" src="/placeholder.svg" alt="Imagem em tamanho completo">
+    </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Função para mostrar imagem em tamanho completo
+    function showFullImage(imageUrl) {
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        
+        modalImage.src = imageUrl;
+        modal.classList.add('show');
+        
+        // Impedir rolagem do body quando o modal estiver aberto
+        document.body.style.overflow = 'hidden';
+    }
+    
+    // Fechar modal ao clicar no botão de fechar
+    document.getElementById('closeModal').addEventListener('click', function() {
+        const modal = document.getElementById('imageModal');
+        modal.classList.remove('show');
+        
+        // Restaurar rolagem do body
+        document.body.style.overflow = '';
+    });
+    
+    // Fechar modal ao clicar fora da imagem
+    document.getElementById('imageModal').addEventListener('click', function(event) {
+        if (event.target === this) {
+            this.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+    });
+</script>
 {% endblock %}
 
