@@ -1,360 +1,379 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Webcam Object Detection</title>
     <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background: #2c3e50; /* Cinza chumbo */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #ecf0f1; /* Texto claro para contraste */
-        }
+      body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        background: #2c3e50; /* Cinza chumbo */
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        color: #ecf0f1; /* Texto claro para contraste */
+      }
 
+      h1 {
+        margin-bottom: 30px;
+        font-size: 2.5em;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        font-weight: 600;
+        color: #ffffff; /* Branco para destacar o título */
+      }
+
+      #video-container {
+        position: relative;
+        width: 90%;
+        max-width: 800px;
+        margin: 0 auto;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      #video-container:hover {
+        transform: scale(1.02);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+      }
+
+      #video-feed {
+        width: 100%;
+        display: block;
+        border-radius: 10px;
+      }
+
+      #toggle-camera {
+        margin-top: 30px;
+        padding: 12px 24px;
+        background: #3498db; /* Azul moderno */
+        color: #fff;
+        border: none;
+        border-radius: 25px;
+        font-size: 1.1em;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.3s ease, transform 0.2s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      }
+
+      #toggle-camera:hover {
+        background: #2980b9; /* Azul mais escuro ao passar o mouse */
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      #toggle-camera:active {
+        transform: translateY(0);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Estilo para o botão de navegação */
+      #nav-button {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        padding: 10px 20px;
+        background: #3498db; /* Azul moderno */
+        color: #fff;
+        border: none;
+        border-radius: 25px;
+        font-size: 1em;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.3s ease, transform 0.2s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        z-index: 1000; /* Garante que o botão fique acima de outros elementos */
+      }
+
+      #nav-button:hover {
+        background: #2980b9; /* Azul mais escuro ao passar o mouse */
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      #nav-button:active {
+        transform: translateY(0);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Responsividade para telas menores */
+      @media (max-width: 768px) {
         h1 {
-            margin-bottom: 30px;
-            font-size: 2.5em;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-            font-weight: 600;
-            color: #ffffff; /* Branco para destacar o título */
+          font-size: 2em;
+          margin-bottom: 20px;
         }
 
         #video-container {
-            position: relative;
-            width: 90%;
-            max-width: 800px;
-            margin: 0 auto;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        #video-container:hover {
-            transform: scale(1.02);
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
-        }
-
-        #video-feed {
-            width: 100%;
-            display: block;
-            border-radius: 10px;
+          width: 95%;
+          border-radius: 10px;
         }
 
         #toggle-camera {
-            margin-top: 30px;
-            padding: 12px 24px;
-            background: #3498db; /* Azul moderno */
-            color: #fff;
-            border: none;
-            border-radius: 25px;
-            font-size: 1.1em;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.3s ease, transform 0.2s ease;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+          padding: 10px 20px;
+          font-size: 1em;
         }
 
-        #toggle-camera:hover {
-            background: #2980b9; /* Azul mais escuro ao passar o mouse */
-            transform: translateY(-2px);
-            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
-        }
-
-        #toggle-camera:active {
-            transform: translateY(0);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-        }
-
-        /* Estilo para o botão de navegação */
         #nav-button {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            padding: 10px 20px;
-            background: #3498db; /* Azul moderno */
-            color: #fff;
-            border: none;
-            border-radius: 25px;
-            font-size: 1em;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.3s ease, transform 0.2s ease;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-            z-index: 1000; /* Garante que o botão fique acima de outros elementos */
+          top: 10px;
+          left: 10px;
+          padding: 8px 16px;
+          font-size: 0.9em;
+        }
+      }
+
+      @media (max-width: 480px) {
+        h1 {
+          font-size: 1.5em;
         }
 
-        #nav-button:hover {
-            background: #2980b9; /* Azul mais escuro ao passar o mouse */
-            transform: translateY(-2px);
-            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+        #video-container {
+          border-radius: 8px;
         }
 
-        #nav-button:active {
-            transform: translateY(0);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        #toggle-camera {
+          padding: 8px 16px;
+          font-size: 0.9em;
         }
 
-        /* Responsividade para telas menores */
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 2em;
-                margin-bottom: 20px;
-            }
-
-            #video-container {
-                width: 95%;
-                border-radius: 10px;
-            }
-
-            #toggle-camera {
-                padding: 10px 20px;
-                font-size: 1em;
-            }
-
-            #nav-button {
-                top: 10px;
-                left: 10px;
-                padding: 8px 16px;
-                font-size: 0.9em;
-            }
+        #nav-button {
+          top: 5px;
+          left: 5px;
+          padding: 6px 12px;
+          font-size: 0.8em;
         }
+      }
 
-        @media (max-width: 480px) {
-            h1 {
-                font-size: 1.5em;
-            }
-
-            #video-container {
-                border-radius: 8px;
-            }
-
-            #toggle-camera {
-                padding: 8px 16px;
-                font-size: 0.9em;
-            }
-
-            #nav-button {
-                top: 5px;
-                left: 5px;
-                padding: 6px 12px;
-                font-size: 0.8em;
-            }
-        }
-
-        /* Estilo para notificações de detecção */
-        #detection-notification {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: #3498db;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 5px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.5s ease;
-        }
+      /* Estilo para notificações de detecção */
+      #detection-notification {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: #3498db;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 5px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <!-- Botão de navegação -->
-    <button id="nav-button" onclick="window.location.href='/monitoramento'">Monitoramento</button>
+    <button id="nav-button" onclick="window.location.href='/monitoramento'">
+      Monitoramento
+    </button>
 
     <!-- Conteúdo principal -->
     <h1>Detecção de Vídeo</h1>
     <div id="video-container">
-        <img id="video-feed" src="/video_feed" alt="Video Feed">
+      <img id="video-feed" src="/video_feed" alt="Video Feed" />
     </div>
     <button id="toggle-camera">Alternar Câmera</button>
 
     <script>
-        // Função para alternar entre a câmera e um vídeo estático (opcional)
-        const toggleCameraButton = document.getElementById('toggle-camera');
-        const videoFeed = document.getElementById('video-feed');
-        let isCameraActive = true;
-        let isProcessing = false;
-        let lastDetectionTime = 0;
-        const DETECTION_COOLDOWN = 2000; // 2 segundos entre detecções para evitar duplicatas
-        let detectionState = null; // Current detection state (intacto or defeito)
-        let detectionStartTime = 0; // When the current detection state started
-        let detectionSaved = false; // Flag to prevent saving the same detection multiple times
+      // Função para alternar entre a câmera e um vídeo estático (opcional)
+      const toggleCameraButton = document.getElementById("toggle-camera");
+      const videoFeed = document.getElementById("video-feed");
+      let isCameraActive = true;
+      let isProcessing = false;
+      let lastDetectionTime = 0;
+      const DETECTION_COOLDOWN = 2000; // 2 segundos entre detecções para evitar duplicatas
+      let detectionState = null; // Current detection state (intacto or defeito)
+      let detectionStartTime = 0; // When the current detection state started
+      let detectionSaved = false; // Flag to prevent saving the same detection multiple times
 
-        toggleCameraButton.addEventListener('click', () => {
-            if (isCameraActive) {
-                videoFeed.src = "/static/sample-video.mp4"; // Substitua pelo caminho do vídeo estático
-                toggleCameraButton.textContent = "Ativar Câmera";
-            } else {
-                videoFeed.src = "/video_feed";
-                toggleCameraButton.textContent = "Alternar para Vídeo";
+      toggleCameraButton.addEventListener("click", () => {
+        if (isCameraActive) {
+          videoFeed.src = "/static/sample-video.mp4"; // Substitua pelo caminho do vídeo estático
+          toggleCameraButton.textContent = "Ativar Câmera";
+        } else {
+          videoFeed.src = "/video_feed";
+          toggleCameraButton.textContent = "Alternar para Vídeo";
+        }
+        isCameraActive = !isCameraActive;
+      });
+
+      // Função para obter timestamp em GMT-3 (Brasil)
+      function getBrazilTimestamp() {
+        const now = new Date();
+        // Ajusta para GMT-3
+        const brazilTime = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+        return brazilTime.toISOString();
+      }
+
+      // Função para enviar dados de detecção para o backend
+      async function sendDetectionData(data) {
+        try {
+          const response = await fetch("/save-video-detection", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+          });
+
+          if (response.ok) {
+            console.log("Detecção salva com sucesso!");
+            // Exibe uma notificação temporária
+            showNotification("Objeto detectado e salvo!");
+          } else {
+            console.error("Erro ao salvar dados de detecção");
+          }
+        } catch (error) {
+          console.error("Erro ao enviar dados:", error);
+        }
+      }
+
+      // Função para mostrar uma notificação temporária
+      function showNotification(message) {
+        // Verifica se já existe uma notificação
+        let notification = document.getElementById("detection-notification");
+
+        if (!notification) {
+          // Cria um elemento de notificação
+          notification = document.createElement("div");
+          notification.id = "detection-notification";
+          notification.style.position = "fixed";
+          notification.style.bottom = "20px";
+          notification.style.right = "20px";
+          notification.style.backgroundColor = "#3498db";
+          notification.style.color = "white";
+          notification.style.padding = "15px 20px";
+          notification.style.borderRadius = "5px";
+          notification.style.boxShadow = "0 4px 8px rgba(0,0,0,0.2)";
+          notification.style.zIndex = "1000";
+          notification.style.transition = "opacity 0.5s ease";
+          document.body.appendChild(notification);
+        }
+
+        // Atualiza a mensagem
+        notification.textContent = message;
+        notification.style.opacity = "1";
+
+        // Remove a notificação após 3 segundos
+        setTimeout(() => {
+          notification.style.opacity = "0";
+          setTimeout(() => {
+            if (notification.parentNode) {
+              notification.parentNode.removeChild(notification);
             }
-            isCameraActive = !isCameraActive;
-        });
+          }, 500);
+        }, 3000);
+      }
 
-        // Função para enviar dados de detecção para o backend
-        async function sendDetectionData(data) {
-            try {
-                const response = await fetch('/save-video-detection', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data),
+      // Função para capturar o frame atual e enviar para processamento
+      function captureFrame() {
+        // Verifica se já está processando ou se passou pouco tempo desde a última detecção
+        const currentTime = Date.now();
+        if (
+          isProcessing ||
+          currentTime - lastDetectionTime < DETECTION_COOLDOWN
+        ) {
+          requestAnimationFrame(captureFrame);
+          return;
+        }
+
+        isProcessing = true;
+
+        // Cria um canvas para capturar o frame
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+
+        // Define o tamanho do canvas para corresponder à imagem do feed
+        canvas.width = videoFeed.naturalWidth || 640;
+        canvas.height = videoFeed.naturalHeight || 480;
+
+        // Desenha o frame atual no canvas
+        context.drawImage(videoFeed, 0, 0, canvas.width, canvas.height);
+
+        // Converte o canvas para base64
+        const imageData = canvas.toDataURL("image/jpeg", 0.9);
+
+        // Envia o frame para o servidor para detecção
+        fetch("/process-video-frame", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            image: imageData,
+            timestamp: getBrazilTimestamp(), // Usa timestamp GMT-3
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            // Se objetos foram detectados
+            if (data.detected && data.objects && data.objects.length > 0) {
+              console.log("Objetos detectados:", data.objects);
+
+              const currentStatus = data.status || "intacto";
+
+              // Verifica se o estado de detecção mudou
+              if (detectionState !== currentStatus) {
+                // Estado mudou, reinicia o contador
+                detectionState = currentStatus;
+                detectionStartTime = Date.now();
+                detectionSaved = false;
+              } else if (
+                !detectionSaved &&
+                Date.now() - detectionStartTime > 5000
+              ) {
+                // Mesmo estado por mais de 5 segundos e ainda não foi salvo
+                console.log(
+                  `Detecção consistente de "${currentStatus}" por mais de 5 segundos`
+                );
+
+                // Salva a detecção no banco de dados com a imagem processada que contém as caixas de detecção
+                sendDetectionData({
+                  product_id: `PROD-${Date.now()}`, // Gera um ID único
+                  image_url: data.processed_image, // Imagem processada com as caixas de detecção
+                  detected_objects: data.objects,
+                  status: currentStatus,
+                  confidence: data.confidence || 0.95,
+                  timestamp: getBrazilTimestamp(), // Usa timestamp GMT-3
+                  save_with_boxes: true, // Indica que queremos salvar com as caixas de detecção
                 });
-                
-                if (response.ok) {
-                    console.log('Detecção salva com sucesso!');
-                    // Exibe uma notificação temporária
-                    showNotification('Objeto detectado e salvo!');
-                } else {
-                    console.error('Erro ao salvar dados de detecção');
-                }
-            } catch (error) {
-                console.error('Erro ao enviar dados:', error);
-            }
-        }
 
-        // Função para mostrar uma notificação temporária
-        function showNotification(message) {
-            // Verifica se já existe uma notificação
-            let notification = document.getElementById('detection-notification');
-            
-            if (!notification) {
-                // Cria um elemento de notificação
-                notification = document.createElement('div');
-                notification.id = 'detection-notification';
-                notification.style.position = 'fixed';
-                notification.style.bottom = '20px';
-                notification.style.right = '20px';
-                notification.style.backgroundColor = '#3498db';
-                notification.style.color = 'white';
-                notification.style.padding = '15px 20px';
-                notification.style.borderRadius = '5px';
-                notification.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
-                notification.style.zIndex = '1000';
-                notification.style.transition = 'opacity 0.5s ease';
-                document.body.appendChild(notification);
-            }
-            
-            // Atualiza a mensagem
-            notification.textContent = message;
-            notification.style.opacity = '1';
-            
-            // Remove a notificação após 3 segundos
-            setTimeout(() => {
-                notification.style.opacity = '0';
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.parentNode.removeChild(notification);
-                    }
-                }, 500);
-            }, 3000);
-        }
+                // Marca como salvo para não salvar novamente o mesmo estado
+                detectionSaved = true;
+                showNotification(
+                  `Detecção de "${currentStatus}" salva após 5 segundos!`
+                );
+              }
 
-        // Função para capturar o frame atual e enviar para processamento
-        function captureFrame() {
-            // Verifica se já está processando ou se passou pouco tempo desde a última detecção
-            const currentTime = Date.now();
-            if (isProcessing || (currentTime - lastDetectionTime < DETECTION_COOLDOWN)) {
-                requestAnimationFrame(captureFrame);
-                return;
+              // Atualiza o tempo da última detecção
+              lastDetectionTime = Date.now();
+            } else {
+              // Nenhum objeto detectado, reinicia o estado
+              detectionState = null;
+              detectionStartTime = 0;
+              detectionSaved = false;
             }
 
-            isProcessing = true;
+            isProcessing = false;
+            requestAnimationFrame(captureFrame);
+          })
+          .catch((error) => {
+            console.error("Erro ao processar frame:", error);
+            isProcessing = false;
+            requestAnimationFrame(captureFrame);
+          });
+      }
 
-            // Cria um canvas para capturar o frame
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            
-            // Define o tamanho do canvas para corresponder à imagem do feed
-            canvas.width = videoFeed.naturalWidth || 640;
-            canvas.height = videoFeed.naturalHeight || 480;
-            
-            // Desenha o frame atual no canvas
-            context.drawImage(videoFeed, 0, 0, canvas.width, canvas.height);
-            
-            // Converte o canvas para base64
-            const imageData = canvas.toDataURL('image/jpeg', 0.9);
-            
-            // Envia o frame para o servidor para detecção
-            fetch('/process-video-frame', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    image: imageData,
-                    timestamp: new Date().toISOString()
-                }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Se objetos foram detectados
-                if (data.detected && data.objects && data.objects.length > 0) {
-                    console.log('Objetos detectados:', data.objects);
-                    
-                    const currentStatus = data.status || 'intacto';
-                    
-                    // Verifica se o estado de detecção mudou
-                    if (detectionState !== currentStatus) {
-                        // Estado mudou, reinicia o contador
-                        detectionState = currentStatus;
-                        detectionStartTime = Date.now();
-                        detectionSaved = false;
-                    } else if (!detectionSaved && (Date.now() - detectionStartTime > 5000)) {
-                        // Mesmo estado por mais de 5 segundos e ainda não foi salvo
-                        console.log(`Detecção consistente de "${currentStatus}" por mais de 5 segundos`);
-                        
-                        // Salva a detecção no banco de dados com a imagem processada que contém as caixas de detecção
-                        sendDetectionData({
-                            product_id: `PROD-${Date.now()}`, // Gera um ID único
-                            image_url: data.processed_image, // Imagem processada com as caixas de detecção
-                            detected_objects: data.objects,
-                            status: currentStatus,
-                            confidence: data.confidence || 0.95,
-                            timestamp: new Date().toISOString(),
-                            save_with_boxes: true // Indica que queremos salvar com as caixas de detecção
-                        });
-                        
-                        // Marca como salvo para não salvar novamente o mesmo estado
-                        detectionSaved = true;
-                        showNotification(`Detecção de "${currentStatus}" salva após 5 segundos!`);
-                    }
-                    
-                    // Atualiza o tempo da última detecção
-                    lastDetectionTime = Date.now();
-                } else {
-                    // Nenhum objeto detectado, reinicia o estado
-                    detectionState = null;
-                    detectionStartTime = 0;
-                    detectionSaved = false;
-                }
-                
-                isProcessing = false;
-                requestAnimationFrame(captureFrame);
-            })
-            .catch(error => {
-                console.error('Erro ao processar frame:', error);
-                isProcessing = false;
-                requestAnimationFrame(captureFrame);
-            });
-        }
-
-        // Inicia o processamento do feed de vídeo quando a página carrega
-        document.addEventListener('DOMContentLoaded', () => {
-            // Pequeno atraso para garantir que o feed de vídeo esteja carregado
-            setTimeout(() => {
-                captureFrame();
-            }, 1000);
-        });
+      // Inicia o processamento do feed de vídeo quando a página carrega
+      document.addEventListener("DOMContentLoaded", () => {
+        // Pequeno atraso para garantir que o feed de vídeo esteja carregado
+        setTimeout(() => {
+          captureFrame();
+        }, 1000);
+      });
     </script>
-</body>
+  </body>
 </html>
-

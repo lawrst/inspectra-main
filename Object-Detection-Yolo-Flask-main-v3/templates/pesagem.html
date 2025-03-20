@@ -1,0 +1,501 @@
+{% extends "base.html" %} {% block title %}Pesagem em Tempo Real - INSPECTRA{%
+endblock %} {% block extra_css %}
+<style>
+  .weight-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  .weight-card {
+    background: linear-gradient(135deg, #ffffff, #f5f9ff);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    width: 100%;
+    max-width: 600px;
+    overflow: hidden;
+    transition: var(--transition);
+    border: 1px solid rgba(0, 113, 227, 0.1);
+  }
+
+  .weight-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .weight-header {
+    background: linear-gradient(
+      135deg,
+      var(--primary-blue),
+      var(--secondary-blue)
+    );
+    color: white;
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .weight-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.5px;
+  }
+
+  .weight-subtitle {
+    font-size: 1rem;
+    opacity: 0.8;
+    margin-top: 0.5rem;
+  }
+
+  .weight-body {
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .weight-display {
+    font-size: 5rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    margin: 1rem 0;
+    transition: all 0.3s ease;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .weight-unit {
+    font-size: 2rem;
+    color: var(--text-dark);
+    opacity: 0.5;
+    margin-left: 0.5rem;
+  }
+
+  .weight-timestamp {
+    font-size: 0.9rem;
+    color: var(--text-dark);
+    opacity: 0.6;
+    margin-top: 1rem;
+  }
+
+  .weight-status {
+    margin-top: 2rem;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    transition: var(--transition);
+  }
+
+  .weight-status.connecting {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: #ff9800;
+  }
+
+  .weight-status.connected {
+    background-color: rgba(46, 125, 50, 0.1);
+    color: #2e7d32;
+  }
+
+  .weight-status.error {
+    background-color: rgba(211, 47, 47, 0.1);
+    color: #d32f2f;
+  }
+
+  .weight-history {
+    margin-top: 3rem;
+    width: 100%;
+    max-width: 800px;
+  }
+
+  .history-card {
+    background-color: white;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .history-header {
+    background: linear-gradient(135deg, #64b5f6, #2196f3);
+    color: white;
+    padding: 1.25rem 1.5rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: -0.5px;
+  }
+
+  .history-body {
+    padding: 1.5rem;
+  }
+
+  .history-chart-container {
+    height: 300px;
+    position: relative;
+  }
+
+  .pulse-animation {
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  .tare-button {
+    margin-top: 1.5rem;
+    background-color: var(--primary-blue);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .tare-button:hover {
+    background-color: var(--dark-blue);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .tare-button:active {
+    transform: translateY(0);
+  }
+
+  .tare-button i {
+    font-size: 1.2rem;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="container-fluid">
+  <div class="weight-container">
+    <div class="weight-card">
+      <div class="weight-header">
+        <h1 class="weight-title">Pesagem em Tempo Real</h1>
+        <p class="weight-subtitle">Sensor de peso conectado via Arduino</p>
+      </div>
+      <div class="weight-body">
+        <div id="weightDisplay" class="weight-display">
+          0.00<span class="weight-unit">g</span>
+        </div>
+        <div id="weightTimestamp" class="weight-timestamp">
+          Última atualização: Aguardando dados...
+        </div>
+
+        <button id="tareButton" class="tare-button">
+          <i class="bi bi-arrow-counterclockwise"></i> Tarar Balança
+        </button>
+
+        <div id="connectionStatus" class="weight-status connecting">
+          <i class="bi bi-hourglass-split"></i> Conectando ao sensor...
+        </div>
+      </div>
+    </div>
+
+    <div class="weight-history">
+      <div class="history-card">
+        <div class="history-header">
+          <i class="bi bi-graph-up me-2"></i> Histórico de Peso
+        </div>
+        <div class="history-body">
+          <div class="history-chart-container">
+            <canvas id="weightHistoryChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Configurações iniciais
+  let weightChart;
+  let weightHistory = [];
+  let timeHistory = [];
+  const MAX_HISTORY_POINTS = 50;
+  let isConnected = false;
+  let lastWeight = 0;
+
+  // Formatar data em GMT-3
+  const options = {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  };
+
+  // Inicializar o gráfico
+  function initChart() {
+    const ctx = document.getElementById("weightHistoryChart").getContext("2d");
+
+    weightChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: timeHistory,
+        datasets: [
+          {
+            label: "Peso (g)",
+            data: weightHistory,
+            borderColor: "#0071e3",
+            backgroundColor: "rgba(0, 113, 227, 0.1)",
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: "#0071e3",
+            tension: 0.4,
+            fill: true,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: "top",
+            labels: {
+              font: {
+                family:
+                  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                size: 12,
+              },
+              usePointStyle: true,
+              padding: 20,
+            },
+          },
+          tooltip: {
+            backgroundColor: "rgba(255, 255, 255, 0.9)",
+            titleColor: "#1d1d1f",
+            bodyColor: "#1d1d1f",
+            bodyFont: {
+              family:
+                '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+            },
+            borderColor: "rgba(0, 0, 0, 0.1)",
+            borderWidth: 1,
+            cornerRadius: 8,
+            padding: 12,
+            boxPadding: 6,
+            usePointStyle: true,
+          },
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: "rgba(0, 0, 0, 0.05)",
+              drawBorder: false,
+            },
+            ticks: {
+              font: {
+                family:
+                  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+              },
+            },
+          },
+          x: {
+            grid: {
+              display: false,
+            },
+            ticks: {
+              font: {
+                family:
+                  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+              },
+              maxRotation: 0,
+              maxTicksLimit: 5,
+            },
+          },
+        },
+        animation: {
+          duration: 1000,
+          easing: "easeOutQuart",
+        },
+      },
+    });
+  }
+
+  // Atualizar o gráfico com novos dados
+  function updateChart(weight) {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString("pt-BR", options);
+
+    // Adicionar novo ponto
+    weightHistory.push(weight);
+    timeHistory.push(timeStr);
+
+    // Limitar o número de pontos
+    if (weightHistory.length > MAX_HISTORY_POINTS) {
+      weightHistory.shift();
+      timeHistory.shift();
+    }
+
+    // Atualizar o gráfico
+    weightChart.data.labels = timeHistory;
+    weightChart.data.datasets[0].data = weightHistory;
+    weightChart.update();
+  }
+
+  // Função para buscar os dados mais recentes do sensor
+  async function fetchLatestWeight() {
+    try {
+      // Usar a nova rota direta
+      const response = await fetch("/current-weight");
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Dados recebidos da API:", data);
+
+      if (data && data.weight !== undefined) {
+        updateWeightDisplay(data.weight);
+        updateConnectionStatus(true);
+
+        // Atualizar timestamp
+        if (data.timestamp) {
+          const date = new Date(data.timestamp);
+          document.getElementById(
+            "weightTimestamp"
+          ).textContent = `Última atualização: ${date.toLocaleString(
+            "pt-BR",
+            options
+          )}`;
+        }
+
+        // Atualizar gráfico se o peso mudou
+        if (data.weight !== lastWeight) {
+          updateChart(data.weight);
+          lastWeight = data.weight;
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao buscar dados do sensor:", error);
+      updateConnectionStatus(false, error.message);
+    }
+
+    // Agendar próxima atualização (a cada 1 segundo)
+    setTimeout(fetchLatestWeight, 1000);
+  }
+
+  // Atualizar o display de peso
+  function updateWeightDisplay(weight) {
+    const weightDisplay = document.getElementById("weightDisplay");
+    const formattedWeight = weight.toFixed(2);
+
+    // Verificar se o peso mudou significativamente
+    if (Math.abs(weight - lastWeight) > 0.1) {
+      // Adicionar classe de animação
+      weightDisplay.classList.add("pulse-animation");
+
+      // Remover a classe após a animação
+      setTimeout(() => {
+        weightDisplay.classList.remove("pulse-animation");
+      }, 1500);
+    }
+
+    weightDisplay.innerHTML = `${formattedWeight}<span class="weight-unit">g</span>`;
+  }
+
+  // Atualizar o status de conexão
+  function updateConnectionStatus(connected, errorMessage = null) {
+    const statusElement = document.getElementById("connectionStatus");
+
+    if (connected) {
+      if (!isConnected) {
+        statusElement.className = "weight-status connected";
+        statusElement.innerHTML =
+          '<i class="bi bi-check-circle"></i> Sensor conectado e funcionando';
+        isConnected = true;
+      }
+    } else {
+      statusElement.className = "weight-status error";
+      statusElement.innerHTML = `<i class="bi bi-exclamation-triangle"></i> Erro de conexão: ${
+        errorMessage || "Não foi possível conectar ao sensor"
+      }`;
+      isConnected = false;
+    }
+  }
+
+  // Função para enviar comando de tara
+  async function sendTareCommand() {
+    try {
+      const tareButton = document.getElementById("tareButton");
+      tareButton.disabled = true;
+      tareButton.innerHTML = '<i class="bi bi-hourglass-split"></i> Tarando...';
+
+      // Simular o envio do comando 't' para o Arduino
+      // Em um ambiente real, isso seria enviado através de uma API
+      console.log("Enviando comando de tara para o Arduino...");
+
+      // Simular um atraso na resposta
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Atualizar o display para 0.00
+      updateWeightDisplay(0.0);
+      lastWeight = 0.0;
+
+      // Adicionar ponto zero no gráfico
+      updateChart(0.0);
+
+      // Restaurar o botão
+      tareButton.disabled = false;
+      tareButton.innerHTML =
+        '<i class="bi bi-arrow-counterclockwise"></i> Tarar Balança';
+
+      // Mostrar mensagem de sucesso
+      const statusElement = document.getElementById("connectionStatus");
+      statusElement.className = "weight-status connected";
+      statusElement.innerHTML =
+        '<i class="bi bi-check-circle"></i> Balança tarada com sucesso!';
+
+      // Restaurar mensagem original após 3 segundos
+      setTimeout(() => {
+        if (isConnected) {
+          statusElement.innerHTML =
+            '<i class="bi bi-check-circle"></i> Sensor conectado e funcionando';
+        }
+      }, 3000);
+    } catch (error) {
+      console.error("Erro ao tarar a balança:", error);
+
+      // Restaurar o botão
+      const tareButton = document.getElementById("tareButton");
+      tareButton.disabled = false;
+      tareButton.innerHTML =
+        '<i class="bi bi-arrow-counterclockwise"></i> Tarar Balança';
+
+      // Mostrar mensagem de erro
+      updateConnectionStatus(false, "Erro ao tarar a balança");
+    }
+  }
+
+  // Inicializar a página
+  document.addEventListener("DOMContentLoaded", () => {
+    // Inicializar o gráfico
+    initChart();
+
+    // Iniciar a busca de dados
+    fetchLatestWeight();
+
+    // Configurar o botão de tara
+    document
+      .getElementById("tareButton")
+      .addEventListener("click", sendTareCommand);
+  });
+</script>
+{% endblock %}

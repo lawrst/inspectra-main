@@ -1,13 +1,12 @@
-import express from "express"
-import productInfoController from "../controller/productInfoController.js"
+import express from "express";
+import productInfoController from "../controller/productInfoController.js";
 
-const route = express.Router()
+const route = express.Router();
 
-route.post("/postproduct", productInfoController.postProductInfo)
+route.post("/postproduct", productInfoController.postProductInfo);
 
-route.get("/product/:productId", productInfoController.getProductInfo)
+route.get("/product/:productId", productInfoController.getProductInfo);
 
-route.get("/", productInfoController.getAllProducts)
+route.get("/", productInfoController.getAllProducts);
 
-export default route
-
+export default route;

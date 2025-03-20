@@ -15,7 +15,7 @@ from bson import ObjectId
 import base64
 import json
 
-app = Flask(__name__, template_folder=r'C:\Users\Mariana\Documents\project\inspectra-main\Object-Detection-Yolo-Flask-main-v3\templates')
+app = Flask(__name__, template_folder=r'C:\Users\anace\OneDrive\Documentos\inspectra-main\Object-Detection-Yolo-Flask-main-v3\templates')
 
 CORS(app)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
@@ -152,11 +152,14 @@ def monitoramento():
 @app.route('/deteccao')
 def deteccao():
     return render_template('deteccaoimg.html')
-
         
 @app.route('/video')
 def index_video():
     return render_template('video.html')
+
+@app.route('/pesagem')
+def pesagem():
+    return render_template('pesagem.html')
 
 
 def gen_frames():

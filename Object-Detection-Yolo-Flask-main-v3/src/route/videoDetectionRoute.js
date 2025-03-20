@@ -1,13 +1,15 @@
-import express from "express"
-import VideoDetectionController from "../controller/videoDetectionController.js"
+import express from "express";
+import VideoDetectionController from "../controller/videoDetectionController.js";
 
-const router = express.Router()
+const router = express.Router();
 
 // Rota para processar um frame de vídeo
-router.post("/process-video-frame", VideoDetectionController.processVideoFrame)
+router.post("/process-video-frame", VideoDetectionController.processVideoFrame);
 
 // Rota para salvar uma detecção de vídeo
-router.post("/save-video-detection", VideoDetectionController.saveVideoDetection)
+router.post(
+  "/save-video-detection",
+  VideoDetectionController.saveVideoDetection
+);
 
-export default router
-
+export default router;

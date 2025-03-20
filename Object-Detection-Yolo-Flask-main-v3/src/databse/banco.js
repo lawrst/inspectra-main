@@ -1,11 +1,13 @@
-import mongoose from "mongoose"
+import mongoose from "mongoose";
 
-const connectDatabase = () =>{
-
-    mongoose.connect(process.env.BANCODEDADOS,{useNewUrlParser: true, useUnifiedTopology: true})
+const connectDatabase = () => {
+  mongoose
+    .connect(process.env.BANCODEDADOS, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    })
     .then(() => console.log("MongoDb Conectado"))
-    .catch((error) => console.log(error))
-}
+    .catch((error) => console.log(error));
+};
 
-
-export default connectDatabase
+export default connectDatabase;
