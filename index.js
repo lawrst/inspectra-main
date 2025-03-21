@@ -131,6 +131,7 @@ const StableWeightSchema = new mongoose.Schema({
   sampleData: { type: [Number] }, // Array com todas as amostras para depuração
   status: { type: String, enum: ["aprovado", "reprovado"], required: true },
   timestamp: { type: Date, default: Date.now },
+  isManual: { type: Boolean, default: false }, // Indica se foi uma pesagem manual
 });
 
 const StableWeight = mongoose.model("StableWeight", StableWeightSchema);
@@ -283,6 +284,102 @@ app.get("/api-weight/saved-weights", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Erro ao obter pesos estáveis",
+      error: error.message,
+    });
+  }
+});
+
+// Rota para salvar um peso manualmente (a partir da interface)
+app.post("/api-weight/manual-weighing", async (req, res) => {
+  try {
+    const { weight, samples, sampleData, status, timestamp } = req.body;
+
+    console.log("Recebido pedido para salvar peso manual:", {
+      weight,
+      samples,
+      status,
+    });
+
+    if (weight === undefined || !status) {
+      return res.status(400).json({
+        success: false,
+        message: "Peso e status são obrigatórios",
+      });
+    }
+
+    // Criar um novo registro de peso estável
+    const stableWeight = new StableWeight({
+      weight: Number(weight),
+      samples: samples || undefined,
+      sampleData: sampleData || undefined,
+      status,
+      timestamp: timestamp ? new Date(timestamp) : new Date(),
+      isManual: true, // Marcar como pesagem manual
+    });
+
+    try {
+      // Tentar salvar no banco de dados com timeout reduzido
+      await Promise.race([
+        stableWeight.save(),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Timeout ao salvar no MongoDB")),
+            5000
+          )
+        ),
+      ]);
+
+      console.log("Peso manual salvo com sucesso no MongoDB:", stableWeight);
+
+      // Adicionar ao array global de pesos salvos
+      global.savedWeights.unshift({
+        id: stableWeight._id.toString(),
+        weight: stableWeight.weight,
+        samples: stableWeight.samples,
+        sampleData: stableWeight.sampleData,
+        status: stableWeight.status,
+        timestamp: stableWeight.timestamp,
+        isManual: true,
+      });
+    } catch (dbError) {
+      console.error(
+        "Erro ao salvar no MongoDB, usando armazenamento local:",
+        dbError
+      );
+
+      // Salvar localmente como fallback
+      const localWeight = saveWeightLocally({
+        weight: Number(weight),
+        samples: samples || undefined,
+        sampleData: sampleData || undefined,
+        status,
+        timestamp: timestamp ? new Date(timestamp) : new Date(),
+        isManual: true,
+      });
+
+      console.log("Peso manual salvo localmente:", localWeight);
+    }
+
+    // Manter apenas os 10 registros mais recentes
+    if (global.savedWeights.length > 10) {
+      global.savedWeights = global.savedWeights.slice(0, 10);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Peso manual salvo com sucesso",
+      data: {
+        weight: Number(weight),
+        samples: samples || undefined,
+        status,
+        timestamp: timestamp ? new Date(timestamp) : new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("Erro ao salvar peso manual:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao salvar peso manual",
       error: error.message,
     });
   }

@@ -427,6 +427,81 @@ endblock %} {% block extra_css %}
       background-color: transparent;
     }
   }
+
+  .button-group {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    justify-content: center;
+  }
+
+  .start-weighing-button {
+    background-color: #2e7d32;
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .start-weighing-button:hover {
+    background-color: #1b5e20;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .start-weighing-button:active {
+    transform: translateY(0);
+  }
+
+  .start-weighing-button.weighing {
+    background-color: #d32f2f;
+  }
+
+  .start-weighing-button.weighing:hover {
+    background-color: #b71c1c;
+  }
+
+  .start-weighing-button i {
+    font-size: 1.2rem;
+  }
+
+  .weighing-progress {
+    height: 6px;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 1rem;
+    display: none;
+  }
+
+  .weighing-progress-bar {
+    height: 100%;
+    background-color: #2e7d32;
+    width: 0%;
+    transition: width 0.1s linear;
+  }
+
+  .weighing-status {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #2e7d32;
+    display: none;
+  }
+
+  .manual-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    background-color: #9c27b0;
+    color: white;
+    margin-left: 0.5rem;
+  }
 </style>
 {% endblock %} {% block content %}
 <div class="container-fluid">
@@ -452,9 +527,20 @@ endblock %} {% block extra_css %}
           <div id="stabilityProgressBar" class="stability-progress-bar"></div>
         </div>
 
-        <button id="tareButton" class="tare-button">
-          <i class="bi bi-arrow-counterclockwise"></i> Tarar Balança
-        </button>
+        <div class="button-group">
+          <button id="tareButton" class="tare-button">
+            <i class="bi bi-arrow-counterclockwise"></i> Tarar Balança
+          </button>
+          <button id="startWeighingButton" class="start-weighing-button">
+            <i class="bi bi-play-circle"></i> Iniciar Pesagem
+          </button>
+        </div>
+        <div id="weighingProgress" class="weighing-progress">
+          <div id="weighingProgressBar" class="weighing-progress-bar"></div>
+        </div>
+        <div id="weighingStatus" class="weighing-status">
+          Coletando amostras: <span id="sampleCount">0</span>/5
+        </div>
 
         <div id="connectionStatus" class="weight-status connecting">
           <i class="bi bi-hourglass-split"></i> Conectando ao sensor...
@@ -527,6 +613,13 @@ endblock %} {% block extra_css %}
   let stableStartTime = null;
   const STABILITY_THRESHOLD = 2.0; // Margem de erro de 2g
   const STABILITY_DURATION = 5000; // 5 segundos em milissegundos
+
+  // Variáveis para controle da pesagem manual
+  let isWeighingActive = false;
+  let weighingSamples = [];
+  let weighingStartTime = 0;
+  const WEIGHING_DURATION = 5000; // 5 segundos
+  let weighingInterval = null;
 
   // Formatar data em GMT-3
   const options = {
@@ -743,6 +836,162 @@ endblock %} {% block extra_css %}
     }
   }
 
+  // Função para iniciar o processo de pesagem
+  async function startWeighing() {
+    const startWeighingButton = document.getElementById("startWeighingButton");
+    const weighingProgress = document.getElementById("weighingProgress");
+    const weighingProgressBar = document.getElementById("weighingProgressBar");
+    const weighingStatus = document.getElementById("weighingStatus");
+    const sampleCountSpan = document.getElementById("sampleCount");
+
+    // Se já estiver pesando, cancelar
+    if (isWeighingActive) {
+      stopWeighing();
+      startWeighingButton.innerHTML =
+        '<i class="bi bi-play-circle"></i> Iniciar Pesagem';
+      startWeighingButton.classList.remove("weighing");
+      weighingProgress.style.display = "none";
+      weighingStatus.style.display = "none";
+      return;
+    }
+
+    // Iniciar pesagem
+    isWeighingActive = true;
+    weighingSamples = [];
+    weighingStartTime = Date.now();
+
+    // Atualizar interface
+    startWeighingButton.disabled = false;
+    startWeighingButton.classList.add("weighing");
+    startWeighingButton.innerHTML =
+      '<i class="bi bi-stop-circle"></i> Cancelar Pesagem';
+    weighingProgress.style.display = "block";
+    weighingStatus.style.display = "block";
+    weighingProgressBar.style.width = "0%";
+    sampleCountSpan.textContent = "0";
+
+    // Iniciar intervalo para atualizar o progresso
+    weighingInterval = setInterval(() => {
+      const elapsed = Date.now() - weighingStartTime;
+      const progress = Math.min(100, (elapsed / WEIGHING_DURATION) * 100);
+
+      weighingProgressBar.style.width = `${progress}%`;
+      sampleCountSpan.textContent = weighingSamples.length.toString();
+
+      if (elapsed >= WEIGHING_DURATION) {
+        finishWeighing();
+      }
+    }, 100);
+
+    console.log("Pesagem iniciada");
+  }
+
+  // Função para parar o processo de pesagem
+  function stopWeighing() {
+    isWeighingActive = false;
+
+    if (weighingInterval) {
+      clearInterval(weighingInterval);
+      weighingInterval = null;
+    }
+
+    console.log("Pesagem cancelada");
+  }
+
+  // Função para finalizar o processo de pesagem
+  function finishWeighing() {
+    stopWeighing();
+
+    const button = document.getElementById("startWeighingButton");
+    button.innerHTML = '<i class="bi bi-play-circle"></i> Iniciar Pesagem';
+    button.classList.remove("weighing");
+
+    // Calcular a média se tivermos amostras
+    if (weighingSamples.length > 0) {
+      const sum = weighingSamples.reduce((acc, val) => acc + val, 0);
+      const average = sum / weighingSamples.length;
+
+      console.log(
+        `Pesagem finalizada. Média: ${average.toFixed(2)}g de ${
+          weighingSamples.length
+        } amostras`
+      );
+
+      // Determinar o status com base no peso
+      const status =
+        average >= 300 && average <= 400 ? "aprovado" : "reprovado";
+
+      // Salvar o peso médio
+      saveWeighingResult(average, weighingSamples.length, status);
+
+      // Atualizar a interface com o resultado
+      const weightDisplay = document.getElementById("weightDisplay");
+      weightDisplay.innerHTML = `<span style="color: #2e7d32;">${average.toFixed(
+        2
+      )}</span><span class="weight-unit">g</span>`;
+      weightDisplay.classList.add("pulse-animation");
+
+      setTimeout(() => {
+        weightDisplay.classList.remove("pulse-animation");
+      }, 2000);
+
+      // Atualizar o timestamp
+      document.getElementById(
+        "weightTimestamp"
+      ).innerHTML = `<strong style="color: #2e7d32;">Peso médio calculado!</strong> (${weighingSamples.length} amostras)`;
+    } else {
+      console.log("Pesagem finalizada sem amostras");
+      alert("Nenhuma amostra coletada. Verifique a conexão com o sensor.");
+    }
+
+    // Esconder elementos de progresso
+    document.getElementById("weighingProgress").style.display = "none";
+    document.getElementById("weighingStatus").style.display = "none";
+  }
+
+  // Função para salvar o resultado da pesagem
+  async function saveWeighingResult(weight, samples, status) {
+    try {
+      console.log("Enviando dados para salvar:", {
+        weight: weight,
+        samples: samples,
+        status: status,
+      });
+
+      const response = await fetch(
+        "http://192.168.0.6:18000/api-weight/manual-weighing",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            weight: weight,
+            samples: samples,
+            sampleData: weighingSamples,
+            status: status,
+            timestamp: new Date().toISOString(),
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("Resultado da pesagem salvo com sucesso:", result);
+
+        // Atualizar a lista de pesos salvos
+        setTimeout(fetchSavedWeights, 1000);
+      } else {
+        const errorText = await response.text();
+        console.error("Erro ao salvar resultado da pesagem:", errorText);
+        alert("Erro ao salvar o peso. Por favor, tente novamente.");
+      }
+    } catch (error) {
+      console.error("Erro ao salvar resultado da pesagem:", error);
+      alert("Erro de conexão ao salvar o peso. Verifique sua conexão de rede.");
+    }
+  }
+
   // Função para buscar os dados mais recentes do sensor
   async function fetchLatestWeight() {
     try {
@@ -756,7 +1005,6 @@ endblock %} {% block extra_css %}
       }
 
       const data = await response.json();
-      console.log("Dados recebidos da API:", data);
 
       if (data && data.weight !== undefined) {
         const weight = data.weight;
@@ -779,8 +1027,13 @@ endblock %} {% block extra_css %}
           updateChart(weight);
         }
 
-        // Verificar estabilidade
-        checkWeightStability(weight);
+        // Adicionar amostra se a pesagem estiver ativa
+        if (isWeighingActive) {
+          weighingSamples.push(weight);
+          console.log(
+            `Amostra de pesagem adicionada: ${weight}g (${weighingSamples.length})`
+          );
+        }
 
         lastWeight = weight;
       }
@@ -854,6 +1107,11 @@ endblock %} {% block extra_css %}
             ? '<span class="new-badge">Novo</span>'
             : "";
 
+        // Adicionar badge de manual se for uma pesagem manual
+        const manualBadge = weight.isManual
+          ? '<span class="manual-badge">Manual</span>'
+          : "";
+
         // Formatar o peso com 2 casas decimais
         const formattedWeight = weight.weight
           ? weight.weight.toFixed(2)
@@ -868,6 +1126,7 @@ endblock %} {% block extra_css %}
             <td>
               <span class="average-weight">${formattedWeight}g</span>
               ${newBadge}
+              ${manualBadge}
             </td>
             <td>
               ${samplesInfo}
@@ -892,7 +1151,7 @@ endblock %} {% block extra_css %}
           <td colspan="4" class="empty-state">
             <i class="bi bi-database-x"></i>
             <p>Nenhum peso salvo ainda</p>
-            <small>Os pesos serão salvos automaticamente após 5 segundos de estabilidade</small>
+            <small>Clique em "Iniciar Pesagem" para coletar amostras por 5 segundos</small>
           </td>
         `;
       tableBody.appendChild(row);
@@ -1014,6 +1273,11 @@ endblock %} {% block extra_css %}
 
     // Atualizar pesos salvos a cada 10 segundos
     setInterval(fetchSavedWeights, 10000);
+
+    // Configurar o botão de iniciar pesagem
+    document
+      .getElementById("startWeighingButton")
+      .addEventListener("click", startWeighing);
   });
 </script>
 {% endblock %}

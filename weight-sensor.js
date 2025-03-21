@@ -240,6 +240,9 @@ port.on("error", (err) => {
   console.error("Erro na porta serial:", err.message);
 });
 
+// Remover completamente a verificação de estabilidade automática
+// Substituir o evento de processamento de dados recebidos por esta versão simplificada:
+
 // Evento para processar dados recebidos
 parser.on("data", (data) => {
   console.log("Dados recebidos:", data);
@@ -258,14 +261,13 @@ parser.on("data", (data) => {
       lastWeight = weight;
       sendWeightData(weight);
 
-      // Verificar estabilidade
-      if (checkWeightStability(weight)) {
-        // Se o peso estiver estável por 5 segundos, salvar no banco de dados
-        saveStableWeight(weight);
-      }
+      // Não verificamos mais a estabilidade automaticamente
+      // O salvamento agora é controlado exclusivamente pelo botão na interface
     }
   }
 });
+
+// Substituir a função sendPeriodicWeight por esta versão simplificada:
 
 // Função para enviar o último peso conhecido periodicamente
 function sendPeriodicWeight() {
@@ -273,11 +275,8 @@ function sendPeriodicWeight() {
     console.log("Enviando peso periódico:", lastWeight);
     sendWeightData(lastWeight);
 
-    // Verificar estabilidade
-    if (checkWeightStability(lastWeight)) {
-      // Se o peso estiver estável por 5 segundos, salvar no banco de dados
-      saveStableWeight(lastWeight);
-    }
+    // Não verificamos mais a estabilidade automaticamente
+    // O salvamento agora é controlado exclusivamente pelo botão na interface
   }
 
   // Agendar próximo envio em 1 segundo
