@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Exibição de Peso Médio</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        background-color: #f5f5f7;
+      }
+
+      .weight-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        width: 100%;
+        max-width: 500px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+      }
+
+      .weight-header {
+        background: linear-gradient(135deg, #0071e3, #147ce5);
+        color: white;
+        padding: 1.5rem;
+        text-align: center;
+      }
+
+      .weight-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+      }
+
+      .weight-subtitle {
+        font-size: 1rem;
+        opacity: 0.8;
+        margin-top: 0.5rem;
+      }
+
+      .weight-body {
+        padding: 2rem;
+        text-align: center;
+      }
+
+      .weight-display {
+        font-size: 5rem;
+        font-weight: 700;
+        color: #0071e3;
+        margin: 1rem 0;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+      }
+
+      .weight-unit {
+        font-size: 2rem;
+        color: #1d1d1f;
+        opacity: 0.5;
+        margin-left: 0.5rem;
+      }
+
+      .weight-info {
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        color: #1d1d1f;
+        opacity: 0.7;
+      }
+
+      .status-badge {
+        display: inline-block;
+        padding: 0.35rem 0.75rem;
+        border-radius: 50px;
+        font-weight: 500;
+        font-size: 0.85rem;
+        margin-top: 1rem;
+      }
+
+      .status-approved {
+        background-color: rgba(46, 125, 50, 0.1);
+        color: #2e7d32;
+      }
+
+      .status-rejected {
+        background-color: rgba(211, 47, 47, 0.1);
+        color: #d32f2f;
+      }
+
+      .refresh-button {
+        margin-top: 1.5rem;
+        background-color: #0071e3;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .refresh-button:hover {
+        background-color: #0a4da8;
+        transform: translateY(-2px);
+      }
+
+      .pulse-animation {
+        animation: pulse 1.5s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="weight-card">
+      <div class="weight-header">
+        <h1 class="weight-title">Peso Médio</h1>
+        <p class="weight-subtitle">
+          Média calculada após 5 segundos de estabilidade
+        </p>
+      </div>
+      <div class="weight-body">
+        <div id="weightDisplay" class="weight-display">
+          0.00<span class="weight-unit">g</span>
+        </div>
+
+        <div id="weightInfo" class="weight-info">Aguardando dados...</div>
+
+        <div id="statusBadge" class="status-badge" style="display: none">
+          Aguardando status...
+        </div>
+
+        <button id="refreshButton" class="refresh-button">
+          Atualizar Dados
+        </button>
+      </div>
+    </div>
+
+    <script>
+      // Função para buscar o último peso médio
+      async function fetchLatestAverage() {
+        try {
+          const response = await fetch(
+            "http://localhost:18002/api-weight/latest-average"
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log("Dados recebidos:", data);
+
+          // Atualizar a interface
+          updateDisplay(data);
+        } catch (error) {
+          console.error("Erro ao buscar peso médio:", error);
+          document.getElementById("weightInfo").textContent =
+            "Erro ao buscar dados. Tente novamente.";
+        }
+      }
+
+      // Função para atualizar a exibição
+      function updateDisplay(data) {
+        // Atualizar o peso
+        const weightDisplay = document.getElementById("weightDisplay");
+        const formattedWeight = data.weight.toFixed(2);
+        weightDisplay.innerHTML = `${formattedWeight}<span class="weight-unit">g</span>`;
+
+        // Adicionar animação
+        weightDisplay.classList.add("pulse-animation");
+        setTimeout(() => {
+          weightDisplay.classList.remove("pulse-animation");
+        }, 1500);
+
+        // Atualizar informações
+        const weightInfo = document.getElementById("weightInfo");
+        const date = new Date(data.timestamp);
+        const formattedDate = date.toLocaleString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+
+        weightInfo.textContent = `Calculado a partir de ${data.samples} amostras em ${formattedDate}`;
+
+        // Atualizar status
+        const statusBadge = document.getElementById("statusBadge");
+        statusBadge.style.display = "inline-block";
+
+        if (data.status === "aprovado") {
+          statusBadge.className = "status-badge status-approved";
+          statusBadge.textContent = "Aprovado";
+        } else {
+          statusBadge.className = "status-badge status-rejected";
+          statusBadge.textContent = "Reprovado";
+        }
+      }
+
+      // Configurar o botão de atualização
+      document
+        .getElementById("refreshButton")
+        .addEventListener("click", fetchLatestAverage);
+
+      // Buscar dados ao carregar a página
+      document.addEventListener("DOMContentLoaded", fetchLatestAverage);
+
+      // Atualizar a cada 10 segundos
+      setInterval(fetchLatestAverage, 10000);
+    </script>
+  </body>
+</html>

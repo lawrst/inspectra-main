@@ -15,16 +15,28 @@ const parser = port.pipe(new ReadlineParser({ delimiter: "\r\n" }));
 // Variável para armazenar o último valor de peso lido
 let lastWeight = 0;
 
-// Função para enviar dados para o servidor
+// Variáveis para controle de estabilidade
+let stableWeight = null;
+let stableStartTime = null;
+const STABILITY_THRESHOLD = 2.0; // Margem de erro de 2g
+const STABILITY_DURATION = 5000; // 5 segundos em milissegundos
+
+// Array para armazenar os pesos durante o período de estabilidade (um por segundo)
+let weightSamples = [];
+let lastSampleTime = 0;
+const SAMPLE_INTERVAL = 1000; // Intervalo de 1 segundo entre amostras
+
+// Atualizar a porta e a rota para enviar os dados do peso
 async function sendWeightData(weight) {
   try {
     console.log("Enviando peso para o servidor:", weight);
 
-    const serverPort = process.env.PORT || 17000; // Alterado para 17000 para corresponder ao servidor
+    // Usar a porta 18000 para evitar conflito com o servidor Python
+    const serverPort = 18000;
 
-    // Usar a nova rota que não depende do banco de dados
+    // Usar a nova rota específica
     const response = await fetch(
-      `http://localhost:${serverPort}/update-weight`,
+      `http://localhost:${serverPort}/api-weight/update-weight`,
       {
         method: "POST",
         headers: {
@@ -43,6 +55,178 @@ async function sendWeightData(weight) {
     }
   } catch (error) {
     console.error("Erro na requisição:", error);
+  }
+}
+
+// Função para verificar a estabilidade do peso
+function checkWeightStability(weight) {
+  const currentTime = Date.now();
+
+  // Se não temos um peso estável ainda ou o peso mudou significativamente
+  if (
+    stableWeight === null ||
+    Math.abs(weight - stableWeight) > STABILITY_THRESHOLD
+  ) {
+    // Reiniciar o monitoramento de estabilidade
+    stableWeight = weight;
+    stableStartTime = currentTime;
+    weightSamples = []; // Limpar amostras anteriores
+    lastSampleTime = 0; // Reiniciar o tempo da última amostra
+    console.log("Iniciando monitoramento de estabilidade com peso:", weight);
+    return false;
+  }
+
+  // Se o peso está dentro da margem de erro
+  if (Math.abs(weight - stableWeight) <= STABILITY_THRESHOLD) {
+    // Verificar se é hora de coletar uma nova amostra (a cada 1 segundo)
+    if (currentTime - lastSampleTime >= SAMPLE_INTERVAL) {
+      weightSamples.push(weight);
+      lastSampleTime = currentTime;
+      console.log(`Amostra #${weightSamples.length} coletada: ${weight}g`);
+    }
+
+    // Verificar se passou o tempo necessário (5 segundos)
+    if (currentTime - stableStartTime >= STABILITY_DURATION) {
+      // Garantir que temos pelo menos algumas amostras
+      if (weightSamples.length > 0) {
+        console.log(
+          `Estabilidade atingida com ${weightSamples.length} amostras. Calculando média...`
+        );
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+// Função para calcular a média dos pesos
+function calculateAverageWeight() {
+  if (weightSamples.length === 0) return 0;
+
+  const sum = weightSamples.reduce((acc, weight) => acc + weight, 0);
+  const average = sum / weightSamples.length;
+
+  console.log(
+    `Média calculada: ${average.toFixed(2)}g a partir de ${
+      weightSamples.length
+    } amostras`
+  );
+  console.log(`Amostras: [${weightSamples.join(", ")}]`);
+
+  return average;
+}
+
+// Atualizar a função saveStableWeight para ser mais resiliente a falhas
+// Substituir a função saveStableWeight por:
+
+// Atualizar a função saveStableWeight para ser mais resiliente a falhas
+async function saveStableWeight(weight) {
+  try {
+    // Calcular a média dos pesos coletados durante o período de estabilidade
+    const averageWeight = calculateAverageWeight();
+    console.log(
+      `Salvando peso estável no banco de dados (média: ${averageWeight.toFixed(
+        2
+      )}g)`
+    );
+
+    // Determinar o status com base no peso
+    const status =
+      averageWeight >= 300 && averageWeight <= 400 ? "aprovado" : "reprovado";
+
+    // Configurar timeout para a requisição
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 segundos de timeout
+
+    try {
+      const response = await fetch(
+        `http://localhost:18000/api-weight/save-stable-weight`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            weight: averageWeight,
+            rawWeight: weight, // Peso original antes da média
+            samples: weightSamples.length, // Número de amostras coletadas
+            sampleData: weightSamples, // Enviar todas as amostras para depuração
+            status: status,
+            timestamp: new Date().toISOString(),
+          }),
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId); // Limpar o timeout se a requisição completar
+
+      if (response.ok) {
+        console.log("Peso estável salvo com sucesso no banco de dados");
+        // Reiniciar o monitoramento de estabilidade
+        stableWeight = null;
+        stableStartTime = null;
+        weightSamples = [];
+        lastSampleTime = 0;
+        return true;
+      } else {
+        const errorText = await response.text();
+        console.error("Erro ao salvar peso estável:", errorText);
+        return false;
+      }
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+
+      if (fetchError.name === "AbortError") {
+        console.error(
+          "Timeout ao salvar peso estável - a requisição demorou muito"
+        );
+      } else {
+        console.error(
+          "Erro na requisição para salvar peso estável:",
+          fetchError
+        );
+      }
+
+      // Tentar salvar localmente através de uma rota alternativa
+      try {
+        console.log(
+          "Tentando salvar localmente através de rota alternativa..."
+        );
+        await fetch(`http://localhost:18000/api-weight/save-local`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            weight: averageWeight,
+            samples: weightSamples.length,
+            status: status,
+            timestamp: new Date().toISOString(),
+          }),
+          // Sem timeout para esta requisição alternativa
+        });
+        console.log("Peso salvo localmente com sucesso");
+      } catch (localError) {
+        console.error("Falha também ao salvar localmente:", localError);
+      }
+
+      // Reiniciar o monitoramento de estabilidade mesmo em caso de erro
+      stableWeight = null;
+      stableStartTime = null;
+      weightSamples = [];
+      lastSampleTime = 0;
+      return false;
+    }
+  } catch (error) {
+    console.error("Erro ao salvar peso estável:", error);
+
+    // Reiniciar o monitoramento de estabilidade mesmo em caso de erro
+    stableWeight = null;
+    stableStartTime = null;
+    weightSamples = [];
+    lastSampleTime = 0;
+    return false;
   }
 }
 
@@ -73,6 +257,12 @@ parser.on("data", (data) => {
       // Sempre envia o peso atual, mesmo que não tenha mudado
       lastWeight = weight;
       sendWeightData(weight);
+
+      // Verificar estabilidade
+      if (checkWeightStability(weight)) {
+        // Se o peso estiver estável por 5 segundos, salvar no banco de dados
+        saveStableWeight(weight);
+      }
     }
   }
 });
@@ -82,6 +272,12 @@ function sendPeriodicWeight() {
   if (lastWeight !== 0) {
     console.log("Enviando peso periódico:", lastWeight);
     sendWeightData(lastWeight);
+
+    // Verificar estabilidade
+    if (checkWeightStability(lastWeight)) {
+      // Se o peso estiver estável por 5 segundos, salvar no banco de dados
+      saveStableWeight(lastWeight);
+    }
   }
 
   // Agendar próximo envio em 1 segundo

@@ -69,19 +69,36 @@ async function sendCurrentWeight(weight) {
   try {
     console.log(`Enviando peso para API: ${weight}g`);
 
-    const response = await fetch(`${API_ENDPOINT}/currentWeight`, {
+    const response = await fetch(`${API_ENDPOINT}/sensorData`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        product_id: `WEIGHT-${Date.now()}`,
         weight: weight,
+        movement: false,
         timestamp: new Date().toISOString(),
       }),
     });
 
     if (!response.ok) {
       console.error("Erro na API:", response.status, await response.text());
+    }
+
+    // Também enviar para a nova rota específica
+    try {
+      await fetch("http://localhost:18000/api-weight/update-weight", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          weight: weight,
+        }),
+      });
+    } catch (err) {
+      console.error("Erro ao enviar para a rota específica:", err);
     }
   } catch (error) {
     console.error("Erro ao enviar dados de peso:", error);

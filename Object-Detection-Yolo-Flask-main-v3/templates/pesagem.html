@@ -177,6 +177,256 @@ endblock %} {% block extra_css %}
   .tare-button i {
     font-size: 1.2rem;
   }
+
+  /* Estilos para a tabela de pesos salvos */
+  .saved-weights-card {
+    background-color: white;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    width: 100%;
+    max-width: 800px;
+  }
+
+  .saved-weights-header {
+    background: linear-gradient(135deg, #4caf50, #2e7d32);
+    color: white;
+    padding: 1.25rem 1.5rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: -0.5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .saved-weights-body {
+    padding: 1.5rem;
+  }
+
+  .saved-weights-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .saved-weights-table th {
+    text-align: left;
+    padding: 1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .saved-weights-table td {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .saved-weights-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .saved-weights-table tr:hover {
+    background-color: rgba(0, 113, 227, 0.05);
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    border-radius: 50px;
+    font-weight: 500;
+    font-size: 0.85rem;
+  }
+
+  .status-approved {
+    background-color: rgba(46, 125, 50, 0.1);
+    color: #2e7d32;
+  }
+
+  .status-rejected {
+    background-color: rgba(211, 47, 47, 0.1);
+    color: #d32f2f;
+  }
+
+  .refresh-button {
+    background-color: transparent;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    cursor: pointer;
+  }
+
+  .refresh-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    transform: rotate(180deg);
+  }
+
+  .stability-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    background-color: rgba(0, 0, 0, 0.05);
+    font-size: 0.9rem;
+  }
+
+  .stability-indicator.stable {
+    background-color: rgba(46, 125, 50, 0.1);
+    color: #2e7d32;
+  }
+
+  .stability-indicator.unstable {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: #ff9800;
+  }
+
+  .stability-progress {
+    width: 100%;
+    height: 6px;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+  }
+
+  .stability-progress-bar {
+    height: 100%;
+    background-color: #ff9800;
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+
+  .stability-progress-bar.complete {
+    background-color: #2e7d32;
+  }
+
+  .empty-state {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-dark);
+    opacity: 0.6;
+  }
+
+  .empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+  }
+
+  /* Estilo para o badge de amostras */
+  .samples-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    background-color: rgba(0, 113, 227, 0.1);
+    color: var(--primary-blue);
+    margin-left: 0.5rem;
+    vertical-align: middle;
+  }
+
+  /* Estilo para o tooltip de informações */
+  .info-tooltip {
+    position: relative;
+    display: inline-block;
+    margin-left: 0.5rem;
+    cursor: help;
+  }
+
+  .info-tooltip i {
+    color: var(--primary-blue);
+    opacity: 0.7;
+    font-size: 0.9rem;
+  }
+
+  .info-tooltip .tooltip-text {
+    visibility: hidden;
+    width: 200px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -100px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.8rem;
+    font-weight: normal;
+  }
+
+  .info-tooltip .tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+  }
+
+  .info-tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  /* Estilo para destacar o peso médio */
+  .average-weight {
+    font-weight: 700;
+    color: var(--primary-blue);
+  }
+
+  /* Estilo para o badge de novo registro */
+  .new-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    background-color: #ff9800;
+    color: white;
+    margin-left: 0.5rem;
+    animation: pulse-badge 2s infinite;
+  }
+
+  @keyframes pulse-badge {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes pulse {
+    0% {
+      background-color: rgba(46, 125, 50, 0.2);
+    }
+    50% {
+      background-color: rgba(46, 125, 50, 0.1);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
 </style>
 {% endblock %} {% block content %}
 <div class="container-fluid">
@@ -194,6 +444,14 @@ endblock %} {% block extra_css %}
           Última atualização: Aguardando dados...
         </div>
 
+        <div id="stabilityIndicator" class="stability-indicator unstable">
+          <i class="bi bi-arrow-repeat"></i>
+          <span>Aguardando estabilidade do peso...</span>
+        </div>
+        <div class="stability-progress">
+          <div id="stabilityProgressBar" class="stability-progress-bar"></div>
+        </div>
+
         <button id="tareButton" class="tare-button">
           <i class="bi bi-arrow-counterclockwise"></i> Tarar Balança
         </button>
@@ -201,6 +459,40 @@ endblock %} {% block extra_css %}
         <div id="connectionStatus" class="weight-status connecting">
           <i class="bi bi-hourglass-split"></i> Conectando ao sensor...
         </div>
+      </div>
+    </div>
+
+    <!-- Tabela de pesos salvos -->
+    <div class="saved-weights-card">
+      <div class="saved-weights-header">
+        <span>
+          <i class="bi bi-database-check me-2"></i> Pesos Médios Salvos
+          <div class="info-tooltip">
+            <i class="bi bi-info-circle"></i>
+            <span class="tooltip-text">
+              Média calculada a partir das amostras coletadas durante 5 segundos
+              de estabilidade
+            </span>
+          </div>
+        </span>
+        <button id="refreshSavedWeights" class="refresh-button">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+      <div class="saved-weights-body">
+        <table class="saved-weights-table">
+          <thead>
+            <tr>
+              <th>Peso Médio</th>
+              <th>Amostras</th>
+              <th>Status</th>
+              <th>Data/Hora</th>
+            </tr>
+          </thead>
+          <tbody id="savedWeightsTableBody">
+            <!-- Será preenchido dinamicamente -->
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -228,9 +520,26 @@ endblock %} {% block extra_css %}
   const MAX_HISTORY_POINTS = 50;
   let isConnected = false;
   let lastWeight = 0;
+  let lastSavedWeightId = null;
+
+  // Variáveis para controle de estabilidade
+  let stableWeight = null;
+  let stableStartTime = null;
+  const STABILITY_THRESHOLD = 2.0; // Margem de erro de 2g
+  const STABILITY_DURATION = 5000; // 5 segundos em milissegundos
 
   // Formatar data em GMT-3
   const options = {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  };
+
+  const dateOptions = {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
@@ -349,11 +658,98 @@ endblock %} {% block extra_css %}
     weightChart.update();
   }
 
+  // Função para verificar a estabilidade do peso
+  function checkWeightStability(weight) {
+    const currentTime = Date.now();
+
+    // Se não temos um peso estável ainda ou o peso mudou significativamente
+    if (
+      stableWeight === null ||
+      Math.abs(weight - stableWeight) > STABILITY_THRESHOLD
+    ) {
+      // Reiniciar o monitoramento de estabilidade
+      stableWeight = weight;
+      stableStartTime = currentTime;
+      updateStabilityIndicator(0);
+      return false;
+    }
+
+    // Se o peso está dentro da margem de erro
+    if (Math.abs(weight - stableWeight) <= STABILITY_THRESHOLD) {
+      // Calcular progresso
+      const elapsedTime = currentTime - stableStartTime;
+      const progress = Math.min(100, (elapsedTime / STABILITY_DURATION) * 100);
+
+      // Atualizar indicador de estabilidade
+      updateStabilityIndicator(progress);
+
+      // Verificar se passou o tempo necessário
+      if (elapsedTime >= STABILITY_DURATION) {
+        // Peso estável por tempo suficiente
+        console.log("Estabilidade atingida! Atualizando interface...");
+
+        // Atualizar a lista de pesos salvos imediatamente
+        setTimeout(() => {
+          fetchSavedWeights().then((weights) => {
+            if (weights && weights.length > 0) {
+              // Destacar o novo peso médio na interface principal
+              const weightDisplay = document.getElementById("weightDisplay");
+              const formattedWeight = weights[0].weight.toFixed(2);
+
+              // Atualizar o display com o peso médio
+              weightDisplay.innerHTML = `<span style="color: #2e7d32;">${formattedWeight}</span><span class="weight-unit">g</span>`;
+
+              // Adicionar animação para destacar
+              weightDisplay.classList.add("pulse-animation");
+
+              // Adicionar texto indicando que é a média
+              const weightTimestamp =
+                document.getElementById("weightTimestamp");
+              weightTimestamp.innerHTML = `<strong style="color: #2e7d32;">Peso médio calculado!</strong> (${
+                weights[0].samples || 5
+              } amostras)`;
+
+              setTimeout(() => {
+                weightDisplay.classList.remove("pulse-animation");
+              }, 2000);
+            }
+          });
+        }, 1000);
+
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // Função para atualizar o indicador de estabilidade
+  function updateStabilityIndicator(progress) {
+    const indicator = document.getElementById("stabilityIndicator");
+    const progressBar = document.getElementById("stabilityProgressBar");
+
+    progressBar.style.width = `${progress}%`;
+
+    if (progress >= 100) {
+      indicator.className = "stability-indicator stable";
+      indicator.innerHTML =
+        '<i class="bi bi-check-circle"></i> Peso estável detectado!';
+      progressBar.classList.add("complete");
+    } else {
+      indicator.className = "stability-indicator unstable";
+      indicator.innerHTML =
+        '<i class="bi bi-arrow-repeat"></i> Aguardando estabilidade do peso...';
+      progressBar.classList.remove("complete");
+    }
+  }
+
   // Função para buscar os dados mais recentes do sensor
   async function fetchLatestWeight() {
     try {
-      // Usar a nova rota direta
-      const response = await fetch("/current-weight");
+      // Usar a URL absoluta com a porta correta
+      const response = await fetch(
+        "http://192.168.0.6:18000/api-weight/current-weight"
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -363,7 +759,8 @@ endblock %} {% block extra_css %}
       console.log("Dados recebidos da API:", data);
 
       if (data && data.weight !== undefined) {
-        updateWeightDisplay(data.weight);
+        const weight = data.weight;
+        updateWeightDisplay(weight);
         updateConnectionStatus(true);
 
         // Atualizar timestamp
@@ -378,10 +775,14 @@ endblock %} {% block extra_css %}
         }
 
         // Atualizar gráfico se o peso mudou
-        if (data.weight !== lastWeight) {
-          updateChart(data.weight);
-          lastWeight = data.weight;
+        if (weight !== lastWeight) {
+          updateChart(weight);
         }
+
+        // Verificar estabilidade
+        checkWeightStability(weight);
+
+        lastWeight = weight;
       }
     } catch (error) {
       console.error("Erro ao buscar dados do sensor:", error);
@@ -390,6 +791,112 @@ endblock %} {% block extra_css %}
 
     // Agendar próxima atualização (a cada 1 segundo)
     setTimeout(fetchLatestWeight, 1000);
+  }
+
+  // Função para buscar os pesos salvos
+  async function fetchSavedWeights() {
+    try {
+      console.log("Buscando pesos salvos...");
+      const response = await fetch(
+        "http://192.168.0.6:18000/api-weight/saved-weights"
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Pesos salvos recebidos:", data);
+
+      // Verificar se há novos pesos salvos
+      const hasNewWeight = data.length > 0 && lastSavedWeightId !== data[0].id;
+
+      // Atualizar o ID do último peso salvo
+      if (data.length > 0) {
+        lastSavedWeightId = data[0].id;
+      }
+
+      // Atualizar a tabela de pesos salvos
+      updateSavedWeightsTable(data, hasNewWeight);
+
+      return data;
+    } catch (error) {
+      console.error("Erro ao buscar pesos salvos:", error);
+      return [];
+    }
+  }
+
+  // Função para atualizar a tabela de pesos salvos
+  function updateSavedWeightsTable(weights, hasNewWeight) {
+    const tableBody = document.getElementById("savedWeightsTableBody");
+
+    // Limpar a tabela
+    tableBody.innerHTML = "";
+
+    if (weights && weights.length > 0) {
+      console.log(`Atualizando tabela com ${weights.length} pesos salvos`);
+
+      // Adicionar cada peso à tabela
+      weights.forEach((weight, index) => {
+        const row = document.createElement("tr");
+
+        // Formatar a data
+        const date = new Date(weight.timestamp);
+        const formattedDate = date.toLocaleString("pt-BR", dateOptions);
+
+        // Determinar a classe do status
+        const statusClass =
+          weight.status === "aprovado" ? "status-approved" : "status-rejected";
+
+        // Adicionar badge de novo para o primeiro item se for novo
+        const newBadge =
+          index === 0 && hasNewWeight
+            ? '<span class="new-badge">Novo</span>'
+            : "";
+
+        // Formatar o peso com 2 casas decimais
+        const formattedWeight = weight.weight
+          ? weight.weight.toFixed(2)
+          : "0.00";
+
+        // Informações sobre as amostras
+        const samplesInfo = weight.samples
+          ? `<span class="samples-badge" title="Número de amostras usadas para calcular a média">${weight.samples}</span>`
+          : '<span class="samples-badge">5</span>';
+
+        row.innerHTML = `
+            <td>
+              <span class="average-weight">${formattedWeight}g</span>
+              ${newBadge}
+            </td>
+            <td>
+              ${samplesInfo}
+            </td>
+            <td><span class="status-badge ${statusClass}">${weight.status}</span></td>
+            <td>${formattedDate}</td>
+          `;
+
+        // Se for o primeiro item e for novo, adicionar classe para destacar
+        if (index === 0 && hasNewWeight) {
+          row.style.backgroundColor = "rgba(46, 125, 50, 0.1)";
+          row.style.animation = "pulse 2s";
+        }
+
+        tableBody.appendChild(row);
+      });
+    } else {
+      console.log("Nenhum peso salvo encontrado");
+      // Exibir mensagem de nenhum peso salvo
+      const row = document.createElement("tr");
+      row.innerHTML = `
+          <td colspan="4" class="empty-state">
+            <i class="bi bi-database-x"></i>
+            <p>Nenhum peso salvo ainda</p>
+            <small>Os pesos serão salvos automaticamente após 5 segundos de estabilidade</small>
+          </td>
+        `;
+      tableBody.appendChild(row);
+    }
   }
 
   // Atualizar o display de peso
@@ -492,10 +999,21 @@ endblock %} {% block extra_css %}
     // Iniciar a busca de dados
     fetchLatestWeight();
 
+    // Buscar pesos salvos
+    fetchSavedWeights();
+
     // Configurar o botão de tara
     document
       .getElementById("tareButton")
       .addEventListener("click", sendTareCommand);
+
+    // Configurar o botão de atualizar pesos salvos
+    document
+      .getElementById("refreshSavedWeights")
+      .addEventListener("click", fetchSavedWeights);
+
+    // Atualizar pesos salvos a cada 10 segundos
+    setInterval(fetchSavedWeights, 10000);
   });
 </script>
 {% endblock %}

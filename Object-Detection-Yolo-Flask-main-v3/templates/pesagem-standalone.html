@@ -666,8 +666,10 @@
       // Função para buscar os dados mais recentes do sensor
       async function fetchLatestWeight() {
         try {
-          // Buscar dados diretamente da API de sensor
-          const response = await fetch("/api-sensor/sensorData");
+          // Usar a URL absoluta com a porta correta
+          const response = await fetch(
+            "http://192.168.0.6:18000/api-weight/current-weight"
+          );
 
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -676,30 +678,25 @@
           const data = await response.json();
           console.log("Dados recebidos da API:", data);
 
-          if (data && data.length > 0) {
-            // Pegar o dado mais recente (primeiro da lista, assumindo que está ordenado por timestamp)
-            const latestData = data[0];
+          if (data && data.weight !== undefined) {
+            updateWeightDisplay(data.weight);
+            updateConnectionStatus(true);
 
-            if (latestData.weight !== undefined) {
-              updateWeightDisplay(latestData.weight);
-              updateConnectionStatus(true);
+            // Atualizar timestamp
+            if (data.timestamp) {
+              const date = new Date(data.timestamp);
+              document.getElementById(
+                "weightTimestamp"
+              ).textContent = `Última atualização: ${date.toLocaleString(
+                "pt-BR",
+                options
+              )}`;
+            }
 
-              // Atualizar timestamp
-              if (latestData.timestamp) {
-                const date = new Date(latestData.timestamp);
-                document.getElementById(
-                  "weightTimestamp"
-                ).textContent = `Última atualização: ${date.toLocaleString(
-                  "pt-BR",
-                  options
-                )}`;
-              }
-
-              // Atualizar gráfico se o peso mudou
-              if (latestData.weight !== lastWeight) {
-                updateChart(latestData.weight);
-                lastWeight = latestData.weight;
-              }
+            // Atualizar gráfico se o peso mudou
+            if (data.weight !== lastWeight) {
+              updateChart(data.weight);
+              lastWeight = data.weight;
             }
           }
         } catch (error) {
